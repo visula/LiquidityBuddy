@@ -88,7 +88,7 @@
                     'error_id' => '0002',
                     'category' => 'Development_Issue',
                     'error_category' => 'DB Related Error',
-                    'error_message'  => 'The table: ' + $tableName + ' is not found in DB'
+                    'error_message'  => 'The table: ' . $tableName . ' is not found in DB'
                 ];
             }
 
@@ -130,7 +130,7 @@
                     'error_id' => '0002',
                     'category' => 'Development_Issue',
                     'error_category' => 'DB Related Error',
-                    'error_message'  => 'The table: ' + $tableName + ' is not found in DB'
+                    'error_message'  => 'The table: ' . $tableName . ' is not found in DB'
                 ];
             }
 

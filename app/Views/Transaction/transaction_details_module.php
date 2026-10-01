@@ -10,6 +10,9 @@
         <th class="text-center">Income</th>
         <th class="text-center">Expense</th>
         <th class="text-center">Running Balance</th>
+        <?php if(isset($paymentMethodMap)){ ?>
+        <th class="text-center">Method</th>
+        <?php } ?>
         <?php if($allow_all_accounts){  ?>
         <th>Account Name</th>
         <?php } ?>
@@ -29,8 +32,8 @@
                 }
                 $currentBalance = $runningBalance[$transaction['AccountSessionID']];
             ?>
-                <tr class="t-row-transaction-action <?php if(($key + 1) > $page_limit){echo 'd-none';}?>" data-page-no="transaction-page-no-<?= $currentPage?>" account="<? $transaction['AccountSessionID']?>">
-                    <td><?= $transaction['TransactionDescription'] ?></td>
+                <tr class="t-row-transaction-action <?php if(($key + 1) > $page_limit){echo 'd-none';}?>" data-page-no="transaction-page-no-<?= $currentPage?>" account="<?= esc($transaction['AccountSessionID'], 'attr') ?>">
+                    <td><?= esc($transaction['TransactionDescription']) ?></td>
                     <td class="text-center"><?= $transaction['TransactionDate'] ?></td>
                     <?php if($transaction['TransactionPayableType'] == 'income') { ?>
                         <td class="text-end mx-3"><?= number_format($transaction['TransactionAmount'],2) ?></td>
@@ -40,8 +43,11 @@
                         <td class="text-end mx-3"><?= number_format($transaction['TransactionAmount'],2) ?></td>
                     <?php } ?>
                     <td class="text-end mx-3"><?= number_format($currentBalance,2) ?></td>
+                    <?php if(isset($paymentMethodMap)){ ?>
+                        <td class="text-center"><small><?= esc($paymentMethodMap[$transaction['PaymentMethodSessionID'] ?? ''] ?? '-') ?></small></td>
+                    <?php } ?>
                     <?php if($allow_all_accounts){  ?>
-                        <td><?= $transaction['AccountName'] ?></td>
+                        <td><?= esc($transaction['AccountName']) ?></td>
                     <?php } ?>
                 </tr>
         <?php 

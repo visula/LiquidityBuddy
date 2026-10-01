@@ -1,300 +1,213 @@
 <?php
 
 namespace App\Controllers;
-use DateTime;
-use App\Controllers\AccountService;
 
+/**
+ * External payments, purchases, incomes and due settlement.
+ * Every endpoint records a `payment` (with the account's payment method) and its
+ * `transaction` rows atomically via PaymentService::recordPayment().
+ */
 class PurchaseController extends PurchaseService
 {
+    /** POST /js-request/payment/expense  (travel / charity / other) */
     public function expenseTransaction()
     {
-        $accountService = new AccountService();
-        $request_data = $this->handlePOSTBodyDataList();
+        $userID = $this->apiUser();
 
-        // passing parameters --> (amount [required], transaction_type [required], from_account [required], to_account [required])
-        $requiredParameters = $this->handleRequiredParameters($request_data, ['amount', 'current_account','budget','external_pay_type']);
+        if($userID === null){
+            return $this->apiUnauthorised();
+        }
+
+        $request_data = $this->handlePOSTBodyDataList();
+        $requiredParameters = $this->handleRequiredParameters($request_data, ['amount', 'current_account', 'budget', 'external_pay_type']);
 
         if(isset($requiredParameters['error_id'])){
-            return $requiredParameters;
+            return $this->apiError($requiredParameters);
         }
 
-        $amount = $request_data['amount'];
-        $description = ($request_data['description'])?$request_data['description']:'Payment Made';
-        $transaction_type = 'expense';
-        $current_account = $request_data['current_account'];
-        $budget = $request_data['budget'];
-        $scheduled_info = ($request_data['scheduled_info'])?$request_data['scheduled_info']:'';
-        $make_initial_payment = (isset($scheduled_info['make_initial_payment']) && $scheduled_info['make_initial_payment'])?$scheduled_info['make_initial_payment']:1;
-        $external_pay_type = ($request_data['external_pay_type'])?$request_data['external_pay_type']:'O';
-        $external_data_list = (isset($request_data['external_data_list']) && $request_data['external_data_list'])?$request_data['external_data_list']:'';
+        $amount = $this->toAmount($request_data['amount']);
 
-        $transactionResponse = $this->externalPaymentInitProccess($this->userAccess(), $amount, $external_pay_type, $external_data_list);
-
-        if(isset($transactionResponse['error_id'])){
-            return $transactionResponse;
+        if($amount === null || $amount <= 0){
+            return $this->apiError($this->paymentError('0024', 'Payment Amount', 'The payment amount must be greater than zero.'));
         }
 
-        $expenseSessionId = ($transactionResponse['data']['ExpenseSessionID'])?$transactionResponse['data']['ExpenseSessionID']:random_int(1, 1000);
+        $payType = in_array($request_data['external_pay_type'], ['T', 'C', 'O'], true) ? $request_data['external_pay_type'] : 'O';
+        $category = ['T' => 'travel', 'C' => 'charity', 'O' => 'expense'][$payType];
+        $description = trim((string) ($request_data['description'] ?? ''));
+        $description = ($description !== '') ? $description : ucfirst($category);
+        $schedule = $this->normaliseSchedule($request_data['scheduled_info'] ?? '');
+        $external = $request_data['external_data_list'] ?? [];
 
-        // TODO:: need to add a condition to implement the first payment and handle the the fisrt payment with the schedule.
-        // to implement the above need to allow scheduled info in to the transaction
-        if(($scheduled_info == '')){
-            // Account Balance Validation handle functionality
-            // TODO:: link user default user
-            $accBalAccount = $accountService->getAccountCurrentBalance($this->userAccess(), $current_account);
+        $result = $this->runAtomic(function () use ($userID, $amount, $payType, $category, $description, $schedule, $external, $request_data) {
+            $expense = $this->externalPaymentInitProccess($userID, $amount, $payType, $external);
 
-            if(isset($accBalAccount['error_id'])){
-                return $accBalAccount;
+            if(isset($expense['error_id'])){
+                return $expense;
             }
 
-            if($accBalAccount < $amount){
-                return $accBalAccount;
-            }
-            // ---End Account Balance Validation handle functionality
-        }
+            return $this->payOrSchedule($userID, [
+                'direction'   => 'OUT',
+                'account'     => $request_data['current_account'],
+                'method'      => $request_data['payment_method'] ?? '',
+                'budget'      => $request_data['budget'],
+                'amount'      => $amount,
+                'category'    => $category,
+                'description' => $description,
+                'reference'   => $request_data['reference'] ?? '',
+                'date'        => $request_data['payment_date'] ?? '',
+                'link_type'   => ($payType === 'T') ? 'travel' : 'expense',
+                'link_id'     => $expense['data']['ExpenseSessionID'],
+                'plan_link'   => 'expense',
+            ], $schedule);
+        });
 
-        // need
-        if(($scheduled_info != '')){
-            $purchasePlanResponse = $this->paymentPlanInitProccess($this->userAccess(),'expense', $expenseSessionId, $scheduled_info, $amount);
-        
-            if(isset($purchasePlanResponse['error_id'])){
-                return $purchasePlanResponse;
-            }
-
-            $amount = $purchasePlanResponse['data']['PaidAmount'];
-        }
-
-        // DONE:: need to add a condition to implement the first payment and handle the the fisrt payment with the scheudle.
-        // to implement the above need to allow scheduled info in to the transaction
-        if($make_initial_payment){
-
-            // TODO:: link user default user
-            $transactionResponse = $accountService->transactionInitProccess($this->userAccess(), $description, $amount, $transaction_type, $current_account, $budget);
-
-            if(isset($transactionResponse['error_id'])){
-                return $transactionResponse;
-            }
-        }
-
-        $response = [
-            'data' => [
-                'success'  => true,
-                'response' => 'Successfully created new expense',
-                'data' => [
-                    'createdResponse' => isset($transactionResponse)?$transactionResponse:''
-                    ]
-            ],
-            'code' => 200
-        ];
-
-        echo json_encode($response['data']);
-        exit;
+        return $this->apiResult($result, $schedule ? 'Payment plan created' : 'Payment recorded');
     }
 
+    /** POST /js-request/payment/purchase */
     public function purchaseTransaction()
     {
-        $accountService = new AccountService();
+        $userID = $this->apiUser();
+
+        if($userID === null){
+            return $this->apiUnauthorised();
+        }
 
         $request_data = $this->handlePOSTBodyDataList();
-
-        // passing parameters --> (amount [required], current_account [required], budget [required], shop [required])
-        $requiredParameters = $this->handleRequiredParameters($request_data, ['amount', 'current_account','budget','shop']);
+        $requiredParameters = $this->handleRequiredParameters($request_data, ['amount', 'current_account', 'budget', 'shop']);
 
         if(isset($requiredParameters['error_id'])){
-            return $requiredParameters;
+            return $this->apiError($requiredParameters);
         }
 
-        $amount = $request_data['amount'];
-        $description = ($request_data['description'])?$request_data['description']:'Payment Made';
-        $item_list = ($request_data['item_list'])?$request_data['item_list']:'';
-        $scheduled_info = ($request_data['scheduled_info'])?$request_data['scheduled_info']:'';
-        $make_initial_payment = isset($scheduled_info['make_initial_payment'])?$scheduled_info['make_initial_payment']:1;
-        $current_account = $request_data['current_account'];
-        $transaction_type = 'expense';
-        $budget = $request_data['budget'];
-        $shop = $request_data['shop'];
+        $amount = $this->toAmount($request_data['amount']);
 
-        // TODO:: need to add a condition to implement the first payment and handle the the fisrt payment with the scheudle.
-        // to implement the above need to allow scheduled info in to the transaction
-        if($scheduled_info == ''){
-            // Account Balance Validation handle functionality
-            // TODO:: link user default user
-            $accBalAccount = $accountService->getAccountCurrentBalance($this->userAccess(), $current_account);
+        if($amount === null || $amount <= 0){
+            return $this->apiError($this->paymentError('0024', 'Payment Amount', 'Amount should be larger than 0.'));
+        }
 
-            if(isset($accBalAccount['error_id'])){
-                return $accBalAccount;
+        $description = trim((string) ($request_data['description'] ?? ''));
+        $description = ($description !== '') ? $description : 'Purchase';
+        $schedule = $this->normaliseSchedule($request_data['scheduled_info'] ?? '');
+        $items = is_array($request_data['item_list'] ?? null) ? $request_data['item_list'] : [];
+
+        $result = $this->runAtomic(function () use ($userID, $amount, $description, $schedule, $items, $request_data) {
+            $purchase = $this->purchaseInitProcess($userID, $description, $request_data['shop'], $amount, $items);
+
+            if(isset($purchase['error_id'])){
+                return $purchase;
             }
 
-            if($accBalAccount < $amount){
-                return $accBalAccount;
+            $paid = $this->payOrSchedule($userID, [
+                'direction'   => 'OUT',
+                'account'     => $request_data['current_account'],
+                'method'      => $request_data['payment_method'] ?? '',
+                'budget'      => $request_data['budget'],
+                'amount'      => $amount,
+                'category'    => 'purchase',
+                'description' => $description,
+                'reference'   => $request_data['reference'] ?? '',
+                'date'        => $request_data['payment_date'] ?? '',
+                'link_type'   => 'purchase',
+                'link_id'     => $purchase['data']['PurchaseSessionID'],
+                'plan_link'   => 'purchase',
+            ], $schedule);
+
+            if(isset($paid['error_id'])){
+                return $paid;
             }
-            // ---End Account Balance Validation handle functionality
-        }
 
-        $purchaseResponse = $this->purchaseInitProcess($this->userAccess(), $description, $shop, $amount, $item_list);
-        
-        if(isset($purchaseResponse['error_id'])){
-            return $purchaseResponse;
-        }
+            return ['success' => true, 'data' => ['Purchase' => $purchase['data'], 'Payment' => $paid['data']]];
+        });
 
-        if(($scheduled_info != '')){
-            $purchasePlanResponse = $this->paymentPlanInitProccess($this->userAccess(),'purchase', $purchaseResponse['data']['PurchaseSessionID'], $scheduled_info, $amount);
-
-            if(isset($purchasePlanResponse['error_id'])){
-                return $purchasePlanResponse;
-            }
-
-            $amount = $purchasePlanResponse['data']['PaidAmount'];
-        }
-        
-        // TODO:: need to add a condition to implement the first payment and handle the the fisrt payment with the scheudle.
-        // to implement the above need to allow scheduled info in to the transaction
-        if(($make_initial_payment)){
-            // TODO:: link user default user
-            $transactionResponse = $accountService->transactionInitProccess($this->userAccess(), $description, $amount, $transaction_type, $current_account, $budget);
-
-            if(isset($transactionResponse['error_id'])){
-                return $transactionResponse;
-            }
-        }
-
-        $response = [
-            'data' => [
-                'success'  => true,
-                'response' => 'Successfully created new purchase',
-                'data' => [
-                    'createdResponse' => isset($transactionResponse) ? $transactionResponse : $purchasePlanResponse
-                ]
-            ],
-            'code' => 200
-        ];
-
-        echo json_encode($response['data']);
-        exit;
+        return $this->apiResult($result, $schedule ? 'Purchase recorded with a payment plan' : 'Purchase paid in full');
     }
 
+    /** POST /js-request/payment/income  (type: one-time | monthly | till) */
     public function incomeTransaction(){
-        $request_data = $this->handlePOSTBodyDataList();
-        $accountService = new AccountService();
+        $userID = $this->apiUser();
 
-        $requiredParameters = $this->handleRequiredParameters($request_data, ['type','amount','account_id','budget_id']);
+        if($userID === null){
+            return $this->apiUnauthorised();
+        }
+
+        $request_data = $this->handlePOSTBodyDataList();
+        $requiredParameters = $this->handleRequiredParameters($request_data, ['type', 'amount', 'account_id', 'budget_id']);
 
         if(isset($requiredParameters['error_id'])){
-            return $requiredParameters;
+            return $this->apiError($requiredParameters);
         }
 
-        // required feilds
+        $amount = $this->toAmount($request_data['amount']);
+
+        if($amount === null || $amount <= 0){
+            return $this->apiError($this->paymentError('0024', 'Payment Amount', 'The amount must be greater than zero.'));
+        }
+
         $type = $request_data['type'];
-        $amount = $request_data['amount'];
-        $accountID = $request_data['account_id'];
-        $budgetID = $request_data['budget_id'];
+        $description = trim((string) ($request_data['description'] ?? ''));
+        $description = ($description !== '') ? $description : 'Payment Received';
+        $plan = $request_data['collection_plan'] ?? [];
+        $schedule = null;
 
-        // optional feilds
-        $description = ($request_data['description'])?$request_data['description']:'Payment Received';
-        $collectionPlan = isset($request_data['collection_plan'])?$request_data['collection_plan']:'';
-
-        // $accountResponse = $accountService->getAccountSessionID($accountID);
-
-        // if(isset($accountResponse['error_id'])){
-        //     return $accountResponse;
-        // }
-
-        if($type == 'till' || $type == 'monthly'){
-            $purchasePlanResponse = $this->paymentPlanInitProccess($this->userAccess(),'income', random_string('alpha', 32), $collectionPlan, $amount);
-
-            if(isset($purchasePlanResponse['error_id'])){
-                return $purchasePlanResponse;
-            }
-
-            $trans_amount = $purchasePlanResponse['data']['PaidAmount'];
-        }else{
-            $trans_amount = $amount;
+        if($type === 'till'){
+            $schedule = $this->normaliseSchedule(is_array($plan) ? $plan : []);
+        }elseif($type === 'monthly'){
+            $schedule = $this->normaliseSchedule(['schedule_type' => 'C'] + (is_array($plan) ? $plan : []));
         }
 
-        $type = /*($transaction_type == 'income') ? 'expense' :*/ 'income';
-
-        if($trans_amount != 0){
-            // DONE:: link user default user
-            $transactionCreation = $accountService->transactionInitProccess($this->userAccess(), $description, $amount, $type, $accountID, $budgetID);
-            // transactionInitProccess($userID, $description, $amount, $type, $accountID, $budgetID)
-
-            // TODO:: Error Handling Method
-            if(isset($transactionCreation['error_id'])){
-                return $this->errorHandleforAPIResponses($transactionCreation);
-            }
-
-            $response = $transactionCreation;
-        }else{
-            $response = $purchasePlanResponse;
-        }
-
-        $response = [
-            'data' => [
-                'success'  => true,
-                'response' => 'Successfully created transaction',
-                'data' => [
-                    'createdResponse' => $response
-                    ]
-            ],
-            'code' => 200
+        $payment = [
+            'direction'   => 'IN',
+            'account'     => $request_data['account_id'],
+            'method'      => $request_data['payment_method'] ?? '',
+            'budget'      => $request_data['budget_id'],
+            'amount'      => $amount,
+            'category'    => 'income',
+            'description' => $description,
+            'reference'   => $request_data['reference'] ?? '',
+            'date'        => $request_data['payment_date'] ?? '',
+            'link_type'   => 'income',
+            'plan_link'   => 'income',
         ];
 
-        echo json_encode($response['data']);
-        exit;
+        $result = $this->runAtomic(function () use ($userID, $payment, $schedule) {
+            return $this->payOrSchedule($userID, $payment, $schedule);
+        });
+
+        return $this->apiResult($result, $schedule ? 'Income plan created' : 'Income recorded');
     }
 
+    /**
+     * POST /js-request/payment/dued  (kept for older front ends)
+     * Same as /js-request/payment/settle; accepts the old payment_list payload.
+     */
     public function duedTransaction(){
+        $userID = $this->apiUser();
+
+        if($userID === null){
+            return $this->apiUnauthorised();
+        }
+
         $request_data = $this->handlePOSTBodyDataList();
-        $accountService = new AccountService();
+        $payableIDs = $request_data['payable_ids'] ?? [];
 
-        $requiredParameters = $this->handleRequiredParameters($request_data, ['amount','account_id','budget_id']);
-
-        if(isset($requiredParameters['error_id'])){
-            return $requiredParameters;
+        if(empty($payableIDs) && is_array($request_data['payment_list'] ?? null)){
+            $payableIDs = array_column($request_data['payment_list'], 'payment_id');
         }
 
-        // required feilds
-        $amount = $request_data['amount'];
-        $accountID = $request_data['account_id'];
-        $budgetID = $request_data['budget_id'];
+        $result = $this->settlePayables($userID, [
+            'payable_ids'     => is_array($payableIDs) ? $payableIDs : [],
+            'payment_plan_id' => $request_data['payment_plan_id'] ?? '',
+            'mode'            => $request_data['mode'] ?? 'full',
+            'amount'          => $request_data['amount'] ?? null,
+            'account'         => $request_data['account_id'] ?? '',
+            'method'          => $request_data['payment_method'] ?? '',
+            'budget'          => $request_data['budget_id'] ?? '',
+            'description'     => $request_data['description'] ?? '',
+            'reference'       => $request_data['reference'] ?? '',
+            'date'            => $request_data['payment_date'] ?? '',
+        ]);
 
-        // optional feilds
-        $description = ($request_data['description'])?$request_data['description']:'Payment Received';
-        $paymentList = isset($request_data['payment_list'])?$request_data['payment_list']:'';
-
-        // $accountResponse = $accountService->getAccountSessionID($accountID);
-
-        // if(isset($accountResponse['error_id'])){
-        //     return $accountResponse;
-        // }
-
-        // $paymentList = json_decode($paymentList, true);
-
-        $response = $this->settlePayment($paymentList);
-
-        if(isset($response['error_id'])){
-            return $response;
-        }
-
-        // DONE:: link user default user
-        $transactionCreation = $accountService->transactionInitProccess($this->userAccess(), $description, $amount, 'expense', $accountID, $budgetID);
-
-        // TODO:: Error Handling Method
-        if(isset($transactionCreation['error_id'])){
-            return $this->errorHandleforAPIResponses($transactionCreation);
-        }
-
-        $response = [
-            'data' => [
-                'success'  => true,
-                'response' => 'Successfully created transaction',
-                'data' => [
-                    'createdResponse' => $transactionCreation
-                    ]
-            ],
-            'code' => 200
-        ];
-
-
+        return $this->apiResult($result, 'Dues settled');
     }
 }

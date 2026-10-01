@@ -41,6 +41,13 @@
                 </div>
                 <input type="text" class="form-control" name="to-running-balance" id="to-running-balance" value="<?= number_format($accountInfo['accounts'][1]['AccountCurrentBalance'],2)?>" readonly>
             </div>
+            <div class="col-12 mb-3 mt-3">
+                <div class="form-floating">
+                    <input type="text" class="form-control" placeholder="Description" name="description" id="description" maxlength="100">
+                    <label for="description">Description (optional, e.g. Credit card settlement)</label>
+                </div>
+            </div>
+            <?= view('Transaction/payment_method_select', ['paymentMethodInfo' => $paymentMethodInfo ?? [], 'label' => 'Transfer from method', 'showReference' => true]) ?>
         </div>
     </div>
     <div class="mb-3 justify-content-center">

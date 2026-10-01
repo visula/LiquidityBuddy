@@ -84,7 +84,10 @@ trait TransactionTraits{
             'TransactionPayableType'        => 'paymenttype',
             'TransactionCreatedDateTime'    => 'createddatetime',
             'TransactionUpdatedDateTime'    => 'updateddatetime',
-            'TransactionStatus'             => 'status'
+            'TransactionStatus'             => 'status',
+            'PaymentSessionID'              => 'paymentsessionid',
+            'PaymentMethodSessionID'        => 'paymentmethodsessionid',
+            'TransactionBalanceAfter'       => 'balanceafter'
         ];
         
         $this->foreignKeys = [

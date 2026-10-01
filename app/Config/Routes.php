@@ -21,7 +21,10 @@ $routes->setDefaultController('Home');
 $routes->setDefaultMethod('index');
 $routes->setTranslateURIDashes(false);
 $routes->set404Override();
-$routes->setAutoRoute(true);
+// Auto routing is OFF: with it on, every public controller/service method was
+// callable by URL without login (e.g. GET /AccountController/transactionInitProccess/...
+// posted money into an account). All app URLs are defined explicitly below.
+$routes->setAutoRoute(false);
 
 /*
  * --------------------------------------------------------------------
@@ -78,6 +81,14 @@ $routes->post('/js-request/payment/expense', 'PurchaseController::expenseTransac
 $routes->post('/js-request/payment/income', 'PurchaseController::incomeTransaction');
 $routes->post('/js-request/payment/dued', 'PurchaseController::duedTransaction');
 $routes->post('/js-request/payment/purchase', 'PurchaseController::purchaseTransaction');
+$routes->post('/js-request/payment/settle', 'PurchaseController::duedTransaction');
+
+// Account wise payment methods + payment ledger
+$routes->get('/payment-method/list', 'PaymentController::paymentMethodPage');
+$routes->get('/payment/history', 'PaymentController::paymentHistoryPage');
+$routes->post('/js-request/payment-method/create', 'PaymentController::createPaymentMethod');
+$routes->post('/js-request/payment-method/update', 'PaymentController::updatePaymentMethod');
+$routes->post('/js-request/payment-method/delete', 'PaymentController::deletePaymentMethod');
 
 // Reports
 $routes->get('/report/transactions/(:any)', 'ReportController::transactionReport/$1');

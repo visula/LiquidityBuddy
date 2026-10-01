@@ -219,21 +219,35 @@ class BlueprintService extends BaseController
 
         // Foreign Tables linked have data verification process
         foreach ($this->foreignKeys as $foreignFeild => $foreignTable) {
+            // Optional (nullable) foreign keys that were not supplied are skipped;
+            // the DB level constraint still guards any value that is supplied.
+            if (! isset($insertList[$foreignFeild]) || $insertList[$foreignFeild] === '') {
+                continue;
+            }
+
             $validation = $this->getDatafromDB([$foreignTable], [$foreignFeild => $insertList[$foreignFeild]], [$foreignFeild]);
 
             if(isset($validation['error_id'])){
                 return $validation;
             }
+
+            # getDatafromDB() swaps the structure in use, re-initiate the table being inserted
+            $this->$functionName();
         }
 
         $module = new DBAccess();
         $return = $module->insertCommonData($table,$proccessedDataList);
 
-        if ($return['success']) {
+        if (isset($return['success']) && $return['success']) {
             return $return;
-        }else{
-            return false;
         }
+
+        return isset($return['error_id']) ? $return : [
+            'error_id' => '0005',
+            'category' => 'Development_Issue',
+            'error_category' => 'DB Related Error',
+            'error_message'  => 'Data insertion of '.$table.' failed'
+        ];
     }
 
     public function updateDBData($table, $conditionList, $updatedList)
@@ -281,11 +295,16 @@ class BlueprintService extends BaseController
         $module = new DBAccess();
         $return = $module->updateCommonData($table,$condition, $update);
 
-        if ($return['success']) {
+        if (isset($return['success']) && $return['success']) {
             return $return;
-        }else{
-            return false;
         }
+
+        return isset($return['error_id']) ? $return : [
+            'error_id' => '0007',
+            'category' => 'Development_Issue',
+            'error_category' => 'DB Related Error',
+            'error_message'  => 'Data update of '.$table.' failed'
+        ];
     }
 
     public function handlePOSTBodyDataList()

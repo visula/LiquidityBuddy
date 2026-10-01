@@ -2,7 +2,7 @@
 
 namespace App\Controllers;
 
-class AccountController extends AccountService
+class AccountController extends PaymentService
 {
 
     // Account Page initation function
@@ -177,27 +177,20 @@ class AccountController extends AccountService
         ];
 
         $data['paymentPlan'] = $this->periodic;
+        $data['paymentMethodInfo'] = $this->paymentMethodList($this->userAccess());
+        $data['transactionInfo']['paymentMethodMap'] = $this->paymentMethodMap($this->userAccess());
 
         $data['external_trans_content'] = view('Transaction/external_trans_module', $data);
         if(isset($data['accountInfo']['accounts'][1])){
             $data['internal_trans_content'] = view('Transaction/internal_trans_module', $data);
         }else{
-            $data['internal_trans_content'] = "<div clasa='transaction-type-list' id='internal'><h3> Need more than one account to make internal transaction </h3></div>";
+            $data['internal_trans_content'] = "<div class='transaction-type-list d-none' id='internal'><h3> Need more than one account to make internal transaction </h3></div>";
         }
 
-        $response = $this->duedSettlementList($this->userAccess());
+        $data['outstandingDues'] = $this->outstandingPayables($this->userAccess());
 
-        // TODO:: Error Handling Method
-        if(isset($response['error_id'])){
-            $response = [];
-        }
-
-        $duedSettlements['unpaidList'] = $response;
-
-        // var_dump($duedSettlements);
-        // die;
         $data['income_trans_content'] = view('Transaction/income_trans_module', $data);
-        $data['dued_trans_content'] = view('Transaction/dued_trans_module', $duedSettlements);
+        $data['dued_trans_content'] = view('Transaction/dued_trans_module', $data);
         $data['other_trans_content'] = view('Transaction/other_trans_module', $data);
         $data['purchase_content'] = view('Transaction/purchase_module', $data);
         $data['account_list_content'] = view('Account/commonModule/account_info_module', $data['accountInfo']);
@@ -240,116 +233,38 @@ class AccountController extends AccountService
         return view('Transaction/list', $data);
     }
 
+    /** POST /js-request/account/transferred - internal transfer between two of the user's accounts */
     public function internalTransaction()
     {
+        $userID = $this->apiUser();
+
+        if($userID === null){
+            return $this->apiUnauthorised();
+        }
+
         $request_data = $this->handlePOSTBodyDataList();
 
-        // passing parameters --> (amount [required], transaction_type [required], from_account [required], to_account [required])
+        // passing parameters --> (amount [required], from_account [required], to_account [required], budget [required])
         $requiredParameters = $this->handleRequiredParameters($request_data, ['amount', 'from_account', 'to_account','budget']);
 
         if(isset($requiredParameters['error_id'])){
-            return $requiredParameters;
+            return $this->apiError($requiredParameters);
         }
 
-        $amount = $request_data['amount'];
-        $transaction_type = 'expense';
-        $from_account = $request_data['from_account'];
-        $to_account = $request_data['to_account'];
-        $budget = $request_data['budget'];
+        $result = $this->recordPayment($userID, [
+            'direction'   => 'TRANSFER',
+            'account'     => $request_data['from_account'],
+            'method'      => $request_data['payment_method'] ?? '',
+            'to_account'  => $request_data['to_account'],
+            'budget'      => $request_data['budget'],
+            'amount'      => $request_data['amount'],
+            'category'    => 'transfer',
+            'description' => $request_data['description'] ?? '',
+            'reference'   => $request_data['reference'] ?? '',
+            'date'        => $request_data['payment_date'] ?? '',
+        ]);
 
-        
-        if($amount <= 0){
-            $response = [
-                'data' => [
-                    'success'  => false,
-                    'response' => 'The transaction amount cannot be zero'
-                ]
-            ];
-
-            echo json_encode($response['data']);
-            exit;
-        }
-
-        // Automated Description for branches to create a user friendly narration for both transaction
-        // TODO:: link user default user
-        $fromAccountName = $this->getAccountName($this->userAccess(), $from_account);
-
-        if(isset($fromAccountName['error_id'])){
-            // $response = [
-            //     'data' => [
-            //         'success'  => false,
-            //         'response' => 'Failure with the account details, Please check the account or refresh and retry.'
-            //     ]
-            // ];
-
-            $this->errorHandleforAPIResponses($fromAccountName);
-        }
-
-        // TODO:: link user default user
-        $toAccountName = $this->getAccountName($this->userAccess(), $to_account);
-
-        if(isset($toAccountName['error_id'])){
-            $this->errorHandleforAPIResponses($toAccountName);
-        }
-
-        $fromDescription = 'Transferred from '.$fromAccountName;
-        $toDescription = 'Transferred to '.$toAccountName;
-        $needBalanceCheckAccID = $from_account;
-        // ---End Automated Description
-
-        // Account Balance Validation handle functionality
-        // TODO:: link user default user
-        $accBalAccount = $this->getAccountCurrentBalance($this->userAccess(), $needBalanceCheckAccID);
-
-        if(isset($accBalAccount['error_id'])){
-            $this->errorHandleforAPIResponses($accBalAccount);
-        }
-
-        if($accBalAccount < $amount){
-            // return $accBalAccount;
-
-            $errorResponse = [
-                'error_id' => '0019',
-                'category' => 'Data_Issue',
-                'error_category' => 'Account Balance',
-                'error_message' => 'The amount entered is larger than the amount in account. Plesae check and rectify.',
-            ];
-
-            $this->errorHandleforAPIResponses($errorResponse);
-        }
-        // ---End Account Balance Validation handle functionality
-
-        // TODO:: link user default user
-        $fromTransactionChanges = $this->transactionInitProccess($this->userAccess(),$fromDescription, $amount, $transaction_type, $from_account, $budget);
-
-        if(isset($fromTransactionChanges['error_id'])){
-            $this->errorHandleforAPIResponses($fromTransactionChanges);
-        }
-
-        $type = /*($transaction_type == 'income') ? 'expense' :*/ 'income';
-
-        // TODO:: link user default user
-        $toTransactionChanges = $this->transactionInitProccess($this->userAccess(), $toDescription, $amount, $type, $to_account, $budget);
-
-        if(isset($toTransactionChanges['error_id'])){
-            $this->errorHandleforAPIResponses($toTransactionChanges);
-            // return $toTransactionChanges;
-        }
-
-        $response = [
-            'data' => [
-                'success'  => true,
-                'response' => 'Successfully tranferred to accounts',
-                'data' => [
-                    'fromTransactionChanges' => $fromTransactionChanges,
-                    'toTransactionChanges' => $toTransactionChanges
-                    ]
-            ],
-            'code' => 200
-        ];
-
-        echo json_encode($response['data']);
-        exit;
+        return $this->apiResult($result, 'Successfully tranferred to accounts');
     }
 
     public function addAccount()
@@ -386,6 +301,7 @@ class AccountController extends AccountService
             $accountGroupsInfo = $accountGroupDetails;
         }
         $data['accountGroupDetails'] = $accountGroupsInfo;
+        $data['methodTypes'] = $this->paymentMethodTypes;
 
         // TODO:: link user default user
         // $this->limit = 0;
@@ -424,43 +340,57 @@ class AccountController extends AccountService
 
     public function createAccount()
     {
+        $userID = $this->apiUser();
+
+        if($userID === null){
+            return $this->apiUnauthorised();
+        }
+
         $request_data = $this->handlePOSTBodyDataList();
 
-        // passing parameters --> (amount [required], transaction_type [required], from_account [required], to_account [required])
+        // passing parameters --> (accountName [required], groupID [required], amount [required])
         $requiredParameters = $this->handleRequiredParameters($request_data, ['accountName', 'groupID', 'amount']);
 
         if(isset($requiredParameters['error_id'])){
-            return $requiredParameters;
+            return $this->apiError($requiredParameters);
         }
 
-        $accountName = $request_data['accountName'];
+        $accountName = trim((string) $request_data['accountName']);
         $groupID = $request_data['groupID'];
-        $amount = $request_data['amount'];
+        $amount = $this->toAmount($request_data['amount']);
 
-        // TODO:: link user default user
-        $accountCreation = $this->accountInitProccess($this->userAccess(), $accountName, $groupID, $amount);
-
-        if(isset($accountCreation['error_id'])){            
-            $response = $this->errorHandleforAPIResponses($accountCreation);
-            echo $response;
-            exit;
-            // return $accountCreation;
+        if($accountName === '' || $amount === null || $amount < 0 || !$this->isSessionID($groupID)){
+            return $this->apiError($this->paymentError('0045', 'Account', 'Account name, group and a zero or positive opening amount are required.'));
         }
 
-        $response = [
-            'data' => [
-                'success'  => true,
-                'response' => 'Successfully created account',
-                'data' => [
-                    'accountCreation' => $accountCreation
-                    ]
-            ],
-            'code' => 200
+        // Every account gets a default payment method (cash, card, bank transfer ...)
+        $methodType = strtoupper((string) ($request_data['method_type'] ?? 'CASH'));
+        $methodType = isset($this->paymentMethodTypes[$methodType]) ? $methodType : 'CASH';
+        $methodInput = [
+            'name'         => trim((string) ($request_data['method_name'] ?? '')) ?: $this->paymentMethodTypes[$methodType],
+            'type'         => $methodType,
+            'reference'    => $request_data['method_reference'] ?? '',
+            'credit_limit' => $request_data['credit_limit'] ?? '0',
+            'is_default'   => true,
         ];
 
-        echo json_encode($response['data']);
-        exit;
+        $result = $this->runAtomic(function () use ($userID, $accountName, $groupID, $amount, $methodInput) {
+            $accountCreation = $this->accountInitProccess($userID, $accountName, $groupID, $amount);
 
+            if(isset($accountCreation['error_id'])){
+                return $accountCreation;
+            }
+
+            $method = $this->paymentMethodCreateProccess($userID, $accountCreation['AccountSessionID'], $methodInput);
+
+            if(isset($method['error_id'])){
+                return $method;
+            }
+
+            return ['success' => true, 'data' => ['accountCreation' => $accountCreation, 'paymentMethod' => $method]];
+        });
+
+        return $this->apiResult($result, 'Successfully created account');
     }
 
     public function accountPage($account_id)
@@ -512,11 +442,13 @@ class AccountController extends AccountService
             'count' => count($transaction),
             'page_count' => ceil(count($transaction) / 10),
             'transactions' => $transaction,
-            'allow_all_accounts' => true
+            'allow_all_accounts' => true,
+            'paymentMethodMap' => $this->paymentMethodMap($this->userAccess())
         ];
 
         $data['transaction_details_container'] = view('Transaction/transaction_details_module', $data['transactionInfo']);
-
+        $data['accountPaymentMethods'] = $this->isSessionID($account_id) ? $this->paymentMethodList($this->userAccess(), $account_id) : [];
+        $data['accountID'] = $account_id;
 
         return view('Account/page', $data);
     }
@@ -582,6 +514,8 @@ class AccountController extends AccountService
             exit;
             // return $accountDelete;
         }
+
+        $this->deactivateAccountPaymentMethods($this->userAccess(), $accountID);
 
         $response = [
             'data' => [

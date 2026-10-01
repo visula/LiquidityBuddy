@@ -28,18 +28,22 @@ $(document).ready(function(){
             return;
         }
 
-        $.ajax({
-            type: "POST",
-            url: base_url + "/js-request/account/create",
-            data: {
-                groupID:$('#account-group-list').val(),
-                accountName:$('#account-name').val(),
-                amount:$('#amount').val(),
-            },
-            success: function (data) {
-                window.location.reload();
-            }
-        });
+        LB.post('js-request/account/create', {
+            groupID: $('#account-group-list').val(),
+            accountName: $('#account-name').val(),
+            amount: $('#amount').val(),
+            method_type: $('#method-type').val(),
+            method_name: $('#method-name').val(),
+            method_reference: $('#method-reference').val(),
+            credit_limit: $('#credit-limit').val()
+        }, function () {
+            window.location.reload();
+        }, '.error-message', $(this));
+    });
+
+    // Credit limit only applies to credit cards
+    $('#method-type').on('change', function () {
+        $('#credit-limit-input').toggleClass('d-none', $(this).val() !== 'CREDIT_CARD');
     });
 
   
@@ -54,6 +58,7 @@ $(document).ready(function(){
 
         $('#create-account-btn').addClass('d-none');
         $('#update-account-btn').removeClass('d-none');
+        $('#default-method-section').addClass('d-none');
     })
 
     $(document).on('click', '#cancel-account-btn', function () {            
@@ -109,6 +114,7 @@ $(document).ready(function(){
         console.log($('#account-group-list').data('default-value'));
         $('#create-account-btn').removeClass('d-none');
         $('#update-account-btn').addClass('d-none');
+        $('#default-method-section').removeClass('d-none');
         $('#account-name').val('');
         $('#amount').val(0);
         $('#account-group-list').val($('#account-group-list').data('default-value'));

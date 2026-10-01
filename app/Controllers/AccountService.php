@@ -136,28 +136,31 @@ class AccountService extends MainService
 
         $budgetID = $response['BudgetSessionID'];
 
-        $response = $this->transactionInitProccess($userID, $accountName, $amount, 'income', $accountID, $budgetID);
+        // Opening balance: a zero balance (e.g. a new credit card account) needs no transaction
+        if((float) $amount > 0){
+            $response = $this->transactionInitProccess($userID, $accountName, $amount, 'income', $accountID, $budgetID);
 
-        if(isset($response['error_id']))
-        {
-            return $response;
+            if(isset($response['error_id']))
+            {
+                return $response;
+            }
+
+            $response = $this->budgetPriceChange($userID, $budgetID, $amount);
+
+            if(isset($response['error_id']))
+            {
+                return $response;
+            }
         }
 
-        $response = $this->budgetPriceChange($userID, $budgetID, $amount);
-
-        if(isset($response['error_id']))
-        {
-            return $response;
-        }
-
-        return $response;
+        return ['success' => true, 'AccountSessionID' => $accountID];
     }
 
     // Active Transaction List Access of the User ID
     public function activeTransactionListAccess($userID, $accountID = '')
     {
         $condtionList = ['UserSessionID' => $userID, 'AccountStatus' => 'A', 'TransactionStatus' => 'A'];
-        $feildList = ['AccountSessionID','AccountName','TransactionDescription','TransactionDate','TransactionAmount','TransactionPayableType','AccountCurrentBalance'];
+        $feildList = ['AccountSessionID','AccountName','TransactionDescription','TransactionDate','TransactionAmount','TransactionPayableType','AccountCurrentBalance','PaymentMethodSessionID','TransactionBalanceAfter'];
         $organizerList = ['orderBy' => ['TransactionCreatedDateTime' => 'DESC', 'TransactionID' => 'DESC']];
 
         if($accountID != ''){
@@ -231,51 +234,122 @@ class AccountService extends MainService
         return $response;
     }
 
-    public function transactionInitProccess($userID, $description, $amount, $type, $accountID, $budgetID)
+    /**
+     * Post a single income/expense transaction against an account.
+     * Validates before anything is written (the old version inserted the row first
+     * and silently returned when funds were short, leaving a transaction with no
+     * balance change). Plain balance check only - payments that may use a credit
+     * card limit go through PaymentService::recordPayment().
+     */
+    protected function transactionInitProccess($userID, $description, $amount, $type, $accountID, $budgetID, $extra = [])
     {
-        $createTransactionData = [
-                            'TransactionDescription' => $description,
-                            'TransactionAmount' => $amount,
-                            'TransactionPayableType' => $type,
-                            'AccountSessionID' => $accountID,
-                            'TransactionDate' => date_format(new DateTime('now'),'Y-m-d'),
-                            'TransactionDateTime' => strtotime(date_format(new DateTime(),'Y-m-d h:i:s')),
-                            'TransactionCreatedDateTime' => strtotime(date_format(new DateTime(),'Y-m-d h:i:s')),
-                            'TransactionUpdatedDateTime' => strtotime(date_format(new DateTime(),'Y-m-d h:i:s')),
-                            'BudgetSessionID' => $budgetID
-                        ];
-        
-        $newTransation = $this->insertDatatoDB('transaction', 
-                    $createTransactionData
-                    );
+        $amount = $this->toAmount($amount);
 
-        if(isset($newTransation['error_id'])){
-            return $newTransation;
+        if(!in_array($type, ['income', 'expense'], true)){
+            return [
+                'error_id' => '0028',
+                'category' => 'Development_Issue',
+                'error_category' => 'Transaction Type',
+                'error_message'  => 'Transaction type must be income or expense'
+            ];
         }
 
+        if($amount === null || $amount <= 0){
+            return [
+                'error_id' => '0024',
+                'category' => 'Format_Issue',
+                'error_category' => 'Transaction Amount',
+                'error_message'  => 'The transaction amount must be greater than zero'
+            ];
+        }
 
-        // TODO:: link user default user
-        $currentAccountBalance =  $this->getAccountCurrentBalance($userID, $accountID);
+        $currentAccountBalance = $this->getAccountCurrentBalance($userID, $accountID);
 
         if(isset($currentAccountBalance['error_id'])){
             return $currentAccountBalance;
         }
 
-        // TODO:: error handle
-        if($type == 'expense' && $currentAccountBalance < $amount)
-        {
-            return;
+        if($type == 'expense' && (float) $currentAccountBalance < $amount){
+            return [
+                'error_id' => '0019',
+                'category' => 'Data_Issue',
+                'error_category' => 'Account Balance',
+                'error_message'  => 'The amount entered is larger than the amount in account. Plesae check and rectify.'
+            ];
         }
 
-        $currentAccountBalance = ($type == 'expense') ? ($currentAccountBalance - $amount) : ($currentAccountBalance + $amount);
+        return $this->runAtomic(function () use ($userID, $description, $amount, $type, $accountID, $budgetID, $extra) {
+            return $this->postTransaction($userID, $accountID, $type, $amount, $description, $budgetID, $extra);
+        });
+    }
 
-        $userUpdated = $this->updateDBData('account', ['UserSessionID' => $userID, 'AccountSessionID' => $accountID], ['AccountCurrentBalance' => $currentAccountBalance]);
+    /**
+     * Low level ledger write: moves the account balance atomically in SQL and
+     * writes the transaction row with the resulting balance. No validation here -
+     * callers (transactionInitProccess / recordPayment) validate first and wrap
+     * the call in runAtomic().
+     *
+     * $extra: PaymentSessionID, PaymentMethodSessionID, date (Y-m-d)
+     */
+    protected function postTransaction($userID, $accountID, $type, $amount, $description, $budgetID, array $extra = [])
+    {
+        $db = \Config\Database::connect();
+        $now = time();
+        $amountSql = number_format((float) $amount, 2, '.', '');
+        $date = $this->validDate($extra['date'] ?? '') ?? date('Y-m-d');
 
-        if(isset($userUpdated['error_id'])){
-            return $userUpdated;
+        $db->table('account')
+            ->set('currentbalance', 'currentbalance ' . ($type === 'expense' ? '-' : '+') . ' ' . $amountSql, false)
+            ->set('updateddatetime', $now)
+            ->where('sessionid', $accountID)
+            ->where('usersessionid', $userID)
+            ->where('status', 'A')
+            ->update();
+
+        if($db->affectedRows() < 1){
+            return [
+                'error_id' => '0022',
+                'category' => 'Data_Issue',
+                'error_category' => 'Account Balance',
+                'error_message'  => 'The account balance could not be updated, please refresh and retry.'
+            ];
         }
 
-        return ['createTransactionData' => $createTransactionData, 'currentAccountBalance' => $currentAccountBalance];
+        $balanceAfter = (float) $db->table('account')->select('currentbalance')->where('sessionid', $accountID)->get()->getRow()->currentbalance;
+
+        $createTransactionData = [
+            'TransactionDescription'     => mb_substr((string) $description, 0, 50),
+            'TransactionAmount'          => $amountSql,
+            'TransactionPayableType'     => $type,
+            'AccountSessionID'           => $accountID,
+            'TransactionDate'            => $date,
+            'TransactionDateTime'        => ($date === date('Y-m-d')) ? $now : strtotime($date . ' ' . date('H:i:s')),
+            'TransactionCreatedDateTime' => $now,
+            'TransactionUpdatedDateTime' => $now,
+            'TransactionBalanceAfter'    => number_format($balanceAfter, 2, '.', '')
+        ];
+
+        if(!empty($budgetID)){
+            $createTransactionData['BudgetSessionID'] = $budgetID;
+        }
+
+        foreach (['PaymentSessionID', 'PaymentMethodSessionID'] as $link) {
+            if(!empty($extra[$link])){
+                $createTransactionData[$link] = $extra[$link];
+            }
+        }
+
+        $newTransation = $this->insertDatatoDB('transaction', $createTransactionData);
+
+        if(isset($newTransation['error_id'])){
+            return $newTransation;
+        }
+
+        return [
+            'createTransactionData' => $createTransactionData,
+            'currentAccountBalance' => $balanceAfter,
+            'TransactionID'         => $newTransation['id']
+        ];
     }
     // ... (Inside your controller)
 
@@ -484,51 +558,5 @@ class AccountService extends MainService
         }
 
         return $response;
-    }
-
-
-    public function duedSettlementList($userID)
-    {
-        $condtionList = ['UserSessionID' => $userID, 'PaymentPlanStatus' => 'A', 'sqldecrypt' => 'paymentplanlink != "income"'];
-        
-        $datetime = strtotime(date_format(new DateTime(),'Y-m-d h:i:s'));
-
-        $response = $this->getDatafromDB(
-                        ['paymentplan'], 
-                        $condtionList,
-                        ['PaymentPlanSessionID','PaymentPlan']
-                    );
-
-        if(isset($response['error_id']))
-        {
-            return $response;
-        }
-
-        $paymentPlan = $response;
-
-        foreach ($paymentPlan as $plan_key => $plan_list) {
-            # code...
-            $condtionList = ['PaymentPlanSessionID' => $plan_list['PaymentPlanSessionID'], 'PayablePaidAmount' => 0];
-
-            if($plan_list['PaymentPlan'] == 'C'){
-
-            }else{
-                $condtionList['sqldecrypt'] = 'duedatetime < ' . $datetime;
-                $response = $this->getDatafromDB(
-                            ['payable'], 
-                            $condtionList
-                        );
-
-                if(isset($response['error_id']))
-                {
-                    continue;
-                    // return $response;
-                }
-
-                $paymentPlan[$plan_key]['PayableList'] = $response;
-            }
-        }
-
-        return $paymentPlan;
     }
 }

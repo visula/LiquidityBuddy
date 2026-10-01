@@ -52,13 +52,14 @@
                 <div class="form-floating">
                     <select class="form-select current-account-list" name="current-account-list" id="current-account-list">
                         <?php foreach($accountInfo['accounts'] as $key => $account){ ?>
-                            <option class="<?= $account['AccountSessionID']?> <?php if($key == 1){echo 'd-none';} ?>" value="<?= $account['AccountSessionID']?>" data-running-balance="<?= number_format($account['AccountCurrentBalance'],2)?>"><?= $account['AccountName'] ?></option>
+                            <option class="<?= $account['AccountSessionID']?>" value="<?= $account['AccountSessionID']?>" data-running-balance="<?= number_format($account['AccountCurrentBalance'],2)?>"><?= esc($account['AccountName']) ?></option>
                         <?php } ?>
                     </select>
                     <label for="to-account-list" class="form-label">Current Account:</label>
                 </div>
                 <input type="text" class="form-control" name="current-running-balance" id="current-running-balance" value="<?= number_format($accountInfo['accounts'][0]['AccountCurrentBalance'],2)?>" readonly>
             </div>
+            <?= view('Transaction/payment_method_select', ['paymentMethodInfo' => $paymentMethodInfo ?? [], 'label' => 'Pay with', 'showReference' => true]) ?>
             <div class="col-6 mb-3">
                 <div class="form-floating">
                     <select class="form-select budget-list" name="budget-list" id="budget-list">

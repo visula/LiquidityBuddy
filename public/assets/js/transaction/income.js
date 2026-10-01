@@ -37,22 +37,22 @@ $(document).ready(function(){
         var amount = $('#income #amount').val();
         var description = $('#income #description').val();
         console.log(amount);
-        if(amount == '' || amount == 0){
-            $('#common-error').text('Please enter amount');
+        if(amount == '' || parseFloat(amount) <= 0){
+            LB.showError('Please enter amount');
             return;
         }
 
         console.log(description);
         if(description == ''){
-            $('#common-error').text('Please enter description');
+            LB.showError('Please enter description');
             return;
         }
 
-        var type = $('input[name="income-type"]:checked').val();
+        var type = $('#income input[name="income-type"]:checked').val();
         var collectionPlan = [];
         console.log(collectionPlan);
         if(type == 'till'){
-            var date = $('#start-date').val();
+            var date = $('#income #start-date').val();
             var planType = $('#until-plan-type').val();
             var paymentPeriod = $('#until-payment-period').val();
             collectionPlan = {
@@ -63,7 +63,7 @@ $(document).ready(function(){
             }
             
         }else if(type == 'monthly'){
-            var date = $('#start-date').val();
+            var date = $('#income #start-date').val();
             collectionPlan = {
                 start_date: date,
                 schedule_type: 'C',
@@ -71,31 +71,19 @@ $(document).ready(function(){
             }
         }
 
-        data = {
+        var $income = $('#income');
+
+        LB.post('js-request/payment/income', {
             amount: amount,
             description: description,
-            account_id: $('#current-account-list').val(),
-            budget_id: $('#budget-list').val(),
+            account_id: $income.find('#current-account-list').val(),
+            payment_method: LB.paymentMethodOf($income),
+            reference: $income.find('#reference').val(),
+            budget_id: $income.find('#budget-list').val(),
             collection_plan: collectionPlan,
             type: type
-        };
-
-        $.ajax({
-            type: "POST",
-            url: base_url + "/js-request/payment/income",
-            data: data,
-            success: function (response) {
-                if(response.success == false){
-                    return;
-                }
-                // console.log(response);
-                window.location.reload();
-            },
-            error: function (xhr, ajaxOptions, thrownError) {
-                console.log(xhr)
-                console.log(ajaxOptions)
-                console.log(thrownError)
-            }
-        });
+        }, function () {
+            window.location.reload();
+        }, null, $(this));
     });
 });

@@ -34,7 +34,9 @@ trait PaymentTraits{
             'PaymentPlanEndDateTime'        => 'enddatetime',
             'PaymentPlanCreatedDateTime'    => 'createddatetime',
             'PaymentPlanUpdatedDateTime'    => 'updateddatetime',
-            'PaymentPlanStatus'             => 'status'
+            'PaymentPlanStatus'             => 'status',
+            'PaymentPlanDescription'        => 'description',
+            'PaymentPlanAmount'             => 'amount'
         ];
         
         $this->foreignKeys = [
@@ -60,12 +62,110 @@ trait PaymentTraits{
             'PayablePaidDate'           => 'paiddate',
             'PayableDueAmount'          => 'dueamount',
             'PayablePaidAmount'         => 'paidamount',
+            'PayableStatus'             => 'status',
             'PayableCreatedDateTime'    => 'createddatetime',
             'PayableUpdatedDateTime'    => 'updateddatetime'
         ];
         
         $this->foreignKeys = [
             'PaymentPlanSessionID' => 'paymentplan',
+        ];
+    }
+
+    # Payment Method Table Structure assigned (payment methods owned by an account)
+    public function paymentmethodStructure()
+    {
+        $this->table = 'paymentmethod';
+
+        $this->primaryKeys = [
+            'PaymentMethodID'           => 'id',
+            'PaymentMethodSessionID'    => 'sessionid'
+        ];
+
+        $this->allKeys = [
+            'PaymentMethodID'               => 'id',
+            'PaymentMethodSessionID'        => 'sessionid',
+            'AccountSessionID'              => 'accountsessionid',
+            'UserSessionID'                 => 'usersessionid',
+            'PaymentMethodName'             => 'name',
+            'PaymentMethodType'             => 'type',
+            'PaymentMethodReference'        => 'reference',
+            'PaymentMethodCreditLimit'      => 'creditlimit',
+            'PaymentMethodIsDefault'        => 'isdefault',
+            'PaymentMethodStatus'           => 'status',
+            'PaymentMethodCreatedDateTime'  => 'createddatetime',
+            'PaymentMethodUpdatedDateTime'  => 'updateddatetime'
+        ];
+
+        $this->foreignKeys = [
+            'AccountSessionID'  => 'account',
+            'UserSessionID'     => 'user'
+        ];
+    }
+
+    # Payment Table Structure assigned (one row per payment / receipt / transfer)
+    public function paymentStructure()
+    {
+        $this->table = 'payment';
+
+        $this->primaryKeys = [
+            'PaymentID'         => 'id',
+            'PaymentSessionID'  => 'sessionid'
+        ];
+
+        $this->allKeys = [
+            'PaymentID'                 => 'id',
+            'PaymentSessionID'          => 'sessionid',
+            'UserSessionID'             => 'usersessionid',
+            'AccountSessionID'          => 'accountsessionid',
+            'PaymentMethodSessionID'    => 'paymentmethodsessionid',
+            'ToAccountSessionID'        => 'toaccountsessionid',
+            'BudgetSessionID'           => 'budgetsessionid',
+            'PaymentDirection'          => 'direction',
+            'PaymentCategory'           => 'category',
+            'PaymentSettlementType'     => 'settlementtype',
+            'PaymentLinkType'           => 'linktype',
+            'PaymentLinkSessionID'      => 'linksessionid',
+            'PaymentAmount'             => 'amount',
+            'PaymentReference'          => 'reference',
+            'PaymentDescription'        => 'description',
+            'PaymentDate'               => 'date',
+            'PaymentDateTime'           => 'datetime',
+            'PaymentStatus'             => 'status',
+            'PaymentCreatedDateTime'    => 'createddatetime',
+            'PaymentUpdatedDateTime'    => 'updateddatetime'
+        ];
+
+        $this->foreignKeys = [
+            'UserSessionID'     => 'user',
+            'AccountSessionID'  => 'account'
+        ];
+    }
+
+    # Due Paid Table Structure assigned (allocation of a payment against a payable)
+    public function duepaidStructure()
+    {
+        $this->table = 'duepaid';
+
+        $this->primaryKeys = [
+            'DuePaidID'         => 'id',
+            'DuePaidSessionID'  => 'sessionid'
+        ];
+
+        $this->allKeys = [
+            'DuePaidID'                 => 'id',
+            'DuePaidSessionID'          => 'sessionid',
+            'PayableSessionID'          => 'payablesessionid',
+            'PaymentSessionID'          => 'paymentsessionid',
+            'DuePaidSettledPortion'     => 'settledportion',
+            'DuePaidStatus'             => 'status',
+            'DuePaidCreatedDateTime'    => 'createddatetime',
+            'DuePaidUpdatedDateTime'    => 'updateddatetime'
+        ];
+
+        $this->foreignKeys = [
+            'PayableSessionID'  => 'payable',
+            'PaymentSessionID'  => 'payment'
         ];
     }
 

@@ -99,6 +99,11 @@ class MainService extends BlueprintService
                     'ID' => 'budget-proccesss',
                     'Link' => '/budget/add',
                 ],
+                'PaymentMethods' => [
+                    'Title' => 'Payment Methods',
+                    'ID' => 'payment-methods',
+                    'Link' => '/payment-method/list',
+                ],
                 'Reports' => [
                     'Title' => 'Reports',
                     'ID' => 'report-list',
@@ -123,6 +128,11 @@ class MainService extends BlueprintService
                             'ID' => 'purchcase-report',
                             'Title' => 'Purchase Report',
                             'Link' => '/report/transactions/purchase'
+                        ],
+                        [
+                            'ID' => 'payment-history',
+                            'Title' => 'Payment History',
+                            'Link' => '/payment/history'
                         ],
                         // [
                         //     'ID' => 'external-report',
@@ -267,6 +277,126 @@ class MainService extends BlueprintService
     public function periodicHandle($periodType)
     {
         return $this->periodic[$periodType];
+    }
+
+    /**
+     * Date of the $n-th period after $date (n = 0 returns $date itself).
+     * Calendar aware: monthly/annual steps keep the day of month and clamp to the
+     * last day of shorter months (31 Jan -> 28/29 Feb -> 31 Mar), unlike the old
+     * fixed 28/365 day offsets which drifted every installment.
+     */
+    protected function addPeriod(string $date, string $periodType, int $n): string
+    {
+        $dateTime = new \DateTime($date);
+
+        switch ($periodType) {
+            case 'D':
+                $dateTime->modify('+' . $n . ' day');
+                break;
+
+            case 'W':
+                $dateTime->modify('+' . (7 * $n) . ' day');
+                break;
+
+            case 'M':
+            case 'A':
+                $months = ($periodType === 'M') ? $n : 12 * $n;
+                $day = (int) $dateTime->format('d');
+                $dateTime->modify('first day of this month')->modify('+' . $months . ' month');
+                $dateTime->setDate((int) $dateTime->format('Y'), (int) $dateTime->format('m'), min($day, (int) $dateTime->format('t')));
+                break;
+
+            default:
+                // 'I' (instant) and 'C' (continuous) have no fixed step
+                break;
+        }
+
+        return $dateTime->format('Y-m-d');
+    }
+
+    /**
+     * Run $work inside a single DB transaction.
+     * $work must return a success array, or an error array (with 'error_id').
+     * Error arrays and exceptions roll everything back, so a failed payment never
+     * leaves a half written ledger (payment without transaction, balance moved
+     * without a row, ...). Nested calls are safe: CodeIgniter only commits or
+     * rolls back the outermost level, and every level propagates the error.
+     */
+    protected function runAtomic(callable $work)
+    {
+        $db = \Config\Database::connect();
+        $db->transBegin();
+
+        try {
+            $result = $work();
+        } catch (\Throwable $exception) {
+            $db->transRollback();
+            log_message('error', 'Atomic operation rolled back: {message}', ['message' => $exception->getMessage()]);
+
+            return [
+                'error_id' => '0030',
+                'category' => 'Data_Issue',
+                'error_category' => 'Transaction Failure',
+                'error_message'  => 'The operation could not be completed and was rolled back. Please retry.'
+            ];
+        }
+
+        if (! is_array($result) || isset($result['error_id'])) {
+            $db->transRollback();
+
+            return is_array($result) ? $result : [
+                'error_id' => '0030',
+                'category' => 'Data_Issue',
+                'error_category' => 'Transaction Failure',
+                'error_message'  => 'The operation could not be completed and was rolled back. Please retry.'
+            ];
+        }
+
+        $db->transCommit();
+
+        return $result;
+    }
+
+    /** 32 character session id (MD5 style). Guards the raw SQL built by getDatafromDB(). */
+    protected function isSessionID($value): bool
+    {
+        return is_string($value) && preg_match('/^[A-Za-z0-9]{32}$/', $value) === 1;
+    }
+
+    /** Money input -> float rounded to cents, or null when not a finite number. */
+    protected function toAmount($value)
+    {
+        if (is_string($value)) {
+            $value = str_replace(',', '', trim($value));
+        }
+
+        if (! is_numeric($value) || ! is_finite((float) $value)) {
+            return null;
+        }
+
+        return round((float) $value, 2);
+    }
+
+    /** Y-m-d string when valid, otherwise null. */
+    protected function validDate($value)
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        $date = \DateTime::createFromFormat('!Y-m-d', $value);
+
+        return ($date && $date->format('Y-m-d') === $value) ? $value : null;
+    }
+
+    /** getDatafromDB() returns one row as an assoc array and many rows as a list; always get a list. */
+    protected function rowsOf($response): array
+    {
+        if (! is_array($response) || isset($response['error_id']) || $response === []) {
+            return [];
+        }
+
+        return isset($response[0]) ? $response : [$response];
     }
 
     public function getDaysofPeriodType($periodType)

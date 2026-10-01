@@ -2,7 +2,7 @@
 
 namespace App\Controllers;
 
-class TransactionController extends AccountService
+class TransactionController extends PaymentService
 {
 
     // Account Page initiation function
@@ -163,25 +163,18 @@ class TransactionController extends AccountService
             'allow_all_accounts' => true,
             'edit_mode' => true
         ];
-$response = $this->duedSettlementList($this->userAccess());
-
-        // TODO:: Error Handling Method
-        if(isset($response['error_id'])){
-            $response = [];
-        }
-
-        $duedSettlements['unpaidList'] = $response;
-
+        $data['outstandingDues'] = $this->outstandingPayables($this->userAccess());
         $data['paymentPlan'] = $this->periodic;
+        $data['paymentMethodInfo'] = $this->paymentMethodList($this->userAccess());
 
         $data['external_trans_content'] = view('Transaction/external_trans_module', $data);
         if(isset($accounts[1])){
             $data['internal_trans_content'] = view('Transaction/internal_trans_module', $data);
         }else{
-            $data['internal_trans_content'] = "<div clasa='transaction-type-list' id='internal'><h3> Need more than one account to make internal transaction </h3></div>";
+            $data['internal_trans_content'] = "<div class='transaction-type-list d-none' id='internal'><h3> Need more than one account to make internal transaction </h3></div>";
         }
         $data['income_trans_content'] = view('Transaction/income_trans_module', $data);
-        $data['dued_trans_content'] = view('Transaction/dued_trans_module', $duedSettlements);
+        $data['dued_trans_content'] = view('Transaction/dued_trans_module', $data);
         $data['other_trans_content'] = view('Transaction/other_trans_module', $data);
         $data['purchase_content'] = view('Transaction/purchase_module', $data);
         // $data['account_list_content'] = view('Account/commonModule/account_info_module', $data['accountInfo']);

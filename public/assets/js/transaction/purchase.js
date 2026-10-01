@@ -176,59 +176,33 @@ $(document).ready(function(){
             }
         }
 
-        var period = 1;
-        var scheduled_info = [];
+        var today = new Date().toISOString().slice(0, 10);
+        var scheduled_info = '';
 
         if($('#schedule-payment-checkbox').is(':checked')){
-            if($('#payment-plan-type').val() != 'I'){
-                period = $('#scheduled-payment-period').val();
-            }
-            // schedule_type = $('#payment-plan-type').val();
-
             scheduled_info = {
-                start_date : ($('#payment-plan-start-date').val()) ? $('#payment-plan-start-date').val() : today,
-                period:period,
-                schedule_type:($('#payment-plan-type').val())?$('#payment-plan-type').val():'I',
-                make_initial_payment:($('#init-payment').is(':checked'))?1:0
-            }
-
+                start_date : $('#payment-plan-start-date').val() || today,
+                period: ($('#payment-plan-type').val() != 'I') ? $('#scheduled-payment-period').val() : 1,
+                schedule_type: $('#payment-plan-type').val() || 'I',
+                make_initial_payment: $('#init-payment').is(':checked') ? 1 : 0
+            };
         }
 
-        data = {
-            amount:($('#purchase #amount').val() == '')?0:$('#purchase #amount').val(),
-            description:$('#purchase #description').val(),
-            current_account:$('#purchase #current-account-list').val(),
-            budget:$('#purchase #budget-list').val(),
-            shop:$('#purchase #shop-list').val(),
-            item_list: (item_list != '')?item_list:'',
-            scheduled_info:(scheduled_info != '')?scheduled_info:''
-        };
+        var $purchase = $('#purchase');
 
-    
-        $.ajax({
-            type: "POST",
-            url: base_url + "/js-request/payment/purchase",
-            data: data,
-            success: function (response) {
-                console.log(response);
-                if(response.success == false){
-                    return;
-                }
-                window.location.reload();
-            },
-            error: function (xhr, ajaxOptions, thrownError) {
-                console.log(xhr)
-                console.log(ajaxOptions)
-                console.log(thrownError)
-                // TODO:: add error
-                $('#common-error').text('* Amount should be larger than 0');
-                $('#common-error').removeClass('d-none');
-            }
-
-        });
-
-        $('#to-transaction-type').val();
-        $('#to-running-balance').val();
+        LB.post('js-request/payment/purchase', {
+            amount: $purchase.find('#amount').val(),
+            description: $purchase.find('#description').val(),
+            current_account: $purchase.find('#current-account-list').val(),
+            payment_method: LB.paymentMethodOf($purchase),
+            reference: $purchase.find('#reference').val(),
+            budget: $purchase.find('#budget-list').val(),
+            shop: $purchase.find('#shop-list').val(),
+            item_list: (item_list.length > 0) ? item_list : '',
+            scheduled_info: scheduled_info
+        }, function () {
+            window.location.reload();
+        }, null, $(this));
     });
 
     // Handle the remove button

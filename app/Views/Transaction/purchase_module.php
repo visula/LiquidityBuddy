@@ -55,7 +55,7 @@
                 <div class="form-floating">
                     <select class="form-select current-account-list" name="current-account-list" id="current-account-list">
                         <?php foreach($accountInfo['accounts'] as $key => $account){ ?>
-                            <option class="<?= $account['AccountSessionID']?> <?php if($key == 1){echo 'd-none';} ?>" value="<?= $account['AccountSessionID']?>" data-running-balance="<?= number_format($account['AccountCurrentBalance'],2)?>"><?= $account['AccountName'] ?></option>
+                            <option class="<?= $account['AccountSessionID']?>" value="<?= $account['AccountSessionID']?>" data-running-balance="<?= number_format($account['AccountCurrentBalance'],2)?>"><?= esc($account['AccountName']) ?></option>
                         <?php } ?>
                     </select>
                     <label for="to-account-list" class="form-label">Current Account:</label>
@@ -72,6 +72,7 @@
                     <label for="from-account-list" class="form-label">Shops:</label>
                 </div>
             </div>
+            <?= view('Transaction/payment_method_select', ['paymentMethodInfo' => $paymentMethodInfo ?? [], 'label' => 'Pay with', 'showReference' => true]) ?>
         </div>
     </div>
     <div class="mb-3 justify-content-center">

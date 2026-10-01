@@ -80,7 +80,7 @@
             $data['budgetSearchActive'] = $transactonType == 'budget' ? true : false;
             
 
-            return view('report/page', $data);
+            return view('Report/page', $data);
         }
 
         public function reportIncomeExpense()
