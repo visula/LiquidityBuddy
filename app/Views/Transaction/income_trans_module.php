@@ -79,7 +79,7 @@
             <div class="col-12 mb-3 d-none" id="first-payment-section">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="first-payment" name="first-payment" value="make-init-payment">
-                    <label class="form-check-label">Make the initate payment</label>
+                    <label class="form-check-label">Make the initial payment</label>
                 </div>
             </div>
         </div>

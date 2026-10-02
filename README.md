@@ -1,3 +1,13 @@
+# LiquidityBuddy
+
+Personal finance app (CodeIgniter 4 + MariaDB): accounts, budgets, incomes, expenses,
+purchases with installment plans, and account-wise payment methods.
+
+**Run it locally:** see [LOCAL_SETUP.md](LOCAL_SETUP.md) (setup scripts, demo login and a
+feature walkthrough). Payment design and endpoints: [docs/PAYMENT_METHODS.md](docs/PAYMENT_METHODS.md).
+
+---
+
 # CodeIgniter 4 Development
 
 [![Build Status](https://github.com/codeigniter4/CodeIgniter4/workflows/PHPUnit/badge.svg)](https://github.com/codeigniter4/CodeIgniter4/actions?query=workflow%3A%22PHPUnit%22)

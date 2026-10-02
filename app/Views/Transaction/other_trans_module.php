@@ -39,7 +39,7 @@
     <div class="col-12 mb-3">
         <div class="form-check">
             <input class="form-check-input" type="checkbox" id="init-payment" name="init-payment" value="make-init-payment">
-            <label class="form-check-label">Make the initate payment</label>
+            <label class="form-check-label">Make the initial payment</label>
         </div>
     </div>
     <div class="col-12 mb-3">

@@ -2,7 +2,11 @@
 
 ## Setup
 
+Full local walkthrough: [LOCAL_SETUP.md](../LOCAL_SETUP.md). In short:
+
 ```bash
+scripts/setup-local-db.sh          # backs up, then applies the migration (Windows: scripts\setup-local-db.bat)
+# or by hand:
 mysql -u root liquiditybuddy < DBBackup/Migrations/2026_10_02_account_payment_methods.sql
 ```
 
