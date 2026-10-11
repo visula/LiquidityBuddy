@@ -1,3 +1,6 @@
 writable/*
-vendor/*
+# Composer packages: restored with `composer install`, never committed
+/vendor/
 .env
+# Editor settings
+.vscode/
