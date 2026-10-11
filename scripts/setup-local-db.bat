@@ -21,7 +21,7 @@ set "DB_NAME=liquiditybuddy"
 
 set "ROOT=%~dp0.."
 set "DUMP=%ROOT%\DBBackup\Liquidity_Buddy.sql"
-set "MIGRATION=%ROOT%\DBBackup\Migrations\2026_10_02_account_payment_methods.sql"
+set "MIGRATIONS_DIR=%ROOT%\DBBackup\Migrations"
 set "GROUP_ORPHANS=%ROOT%\scripts\sql\dev_group_orphan_accounts.sql"
 set "BACKUP_DIR=%ROOT%\writable\backups"
 
@@ -71,8 +71,11 @@ echo ==^> Recreating %DB_NAME% from DBBackup\Liquidity_Buddy.sql
 "%MYSQL_BIN%\mysql.exe" %CONN% < "%DUMP%" || exit /b 1
 
 :migrate
-echo ==^> Applying DBBackup\Migrations\2026_10_02_account_payment_methods.sql
-"%MYSQL_BIN%\mysql.exe" %CONN% < "%MIGRATION%" || exit /b 1
+REM Every migration, oldest first (file names start with the date). All are idempotent.
+for /f "delims=" %%F in ('dir /b /on "%MIGRATIONS_DIR%\*.sql"') do (
+    echo ==^> Applying DBBackup\Migrations\%%F
+    "%MYSQL_BIN%\mysql.exe" %CONN% < "%MIGRATIONS_DIR%\%%F" || exit /b 1
+)
 
 if /i "%~1"=="fresh" (
     echo ==^> Assigning ungrouped demo accounts to an account group
@@ -80,7 +83,7 @@ if /i "%~1"=="fresh" (
 )
 
 echo ==^> Checking the result
-"%MYSQL_BIN%\mysql.exe" %CONN% -t %DB_NAME% -e "SELECT (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('paymentmethod','payment','duepaid')) AS new_tables_of_3, (SELECT COUNT(*) FROM paymentmethod WHERE status='A') AS active_payment_methods, (SELECT COUNT(*) FROM account a WHERE a.status='A' AND a.accountgroupid IS NULL) AS hidden_ungrouped_accounts;"
+"%MYSQL_BIN%\mysql.exe" %CONN% -t %DB_NAME% -e "SELECT (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('paymentmethod','payment','duepaid','recurring')) AS new_tables_of_4, (SELECT COUNT(*) FROM paymentmethod WHERE status='A') AS active_payment_methods, (SELECT COUNT(*) FROM account a WHERE a.status='A' AND a.accountgroupid IS NULL) AS hidden_ungrouped_accounts;"
 
 echo.
 echo Done. Next:  composer install   then   php spark serve   and open http://localhost:8080

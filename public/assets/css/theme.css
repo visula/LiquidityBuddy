@@ -1,0 +1,496 @@
+/*
+ * Liquidity Buddy - UI theme (loaded after Bootstrap and default.css).
+ * One place for the app's look: tokens first, then layout, cards, tables, forms.
+ */
+:root {
+    --lb-bg: #f4f5f9;
+    --lb-surface: #ffffff;
+    --lb-border: #e4e6ee;
+    --lb-text: #1f2330;
+    --lb-muted: #6b7180;
+    --lb-brand: #660f56;          /* existing brand purple (default.css --color-purple) */
+    --lb-brand-dark: #2b0a2a;
+    --lb-brand-soft: #f6eaf3;
+    --lb-radius: 0.75rem;
+    --lb-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+    --lb-gap: 1.25rem;
+}
+
+body {
+    background: var(--lb-bg);
+    color: var(--lb-text);
+    font-size: 0.95rem;
+}
+
+/* ---------- Top navigation ---------- */
+.lb-navbar {
+    background: var(--lb-brand-dark);
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+}
+
+.lb-navbar .navbar-brand {
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.lb-navbar .nav-link {
+    color: rgba(255, 255, 255, 0.72);
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.7rem !important;
+}
+
+.lb-navbar .nav-link:hover,
+.lb-navbar .nav-link:focus {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Current page: brighter pill with an underline bar (aria-current="page" is set too) */
+.lb-navbar .nav-link.active {
+    color: #fff;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 -2px 0 #f0a8dc;
+}
+
+.lb-navbar .dropdown-item.active,
+.lb-navbar .dropdown-item:active {
+    background: var(--lb-brand);
+    color: #fff;
+}
+
+.lb-navbar .dropdown-menu {
+    border: 1px solid var(--lb-border);
+    border-radius: 0.6rem;
+    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+}
+
+/* Brand, icons, avatar */
+.lb-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.lb-brand-mark {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.55rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ae2d6b, #660f56);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.lb-navbar .nav-link,
+.lb-navbar .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.lb-navbar .nav-link .bi {
+    font-size: 1rem;
+    opacity: 0.85;
+}
+
+.lb-navbar .dropdown-item {
+    padding: 0.45rem 1rem;
+    font-size: 0.9rem;
+}
+
+.lb-navbar .dropdown-item .bi {
+    color: var(--lb-muted);
+    width: 1rem;
+}
+
+.lb-navbar .dropdown-item.active .bi,
+.lb-navbar .dropdown-item:active .bi {
+    color: #fff;
+}
+
+.lb-navbar .dropdown-header {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Long account lists scroll inside the menu */
+.lb-dropdown-scroll {
+    max-height: 70vh;
+    overflow-y: auto;
+    min-width: 15rem;
+}
+
+.lb-avatar {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.lb-navbar .lb-profile.dropdown-toggle::after {
+    margin-left: 0.1rem;
+}
+
+/* Desktop: a little room between items */
+@media (min-width: 992px) {
+    .lb-navbar .navbar-nav {
+        gap: 0.15rem;
+    }
+}
+
+/* Mobile: the expanded menu is a clean list */
+@media (max-width: 991.98px) {
+    .lb-navbar .navbar-collapse {
+        margin-top: 0.6rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .lb-navbar .nav-link {
+        padding: 0.6rem 0.75rem !important;
+    }
+
+    .lb-navbar .nav-link.active {
+        box-shadow: inset 3px 0 0 #f0a8dc;
+    }
+
+    .lb-navbar .dropdown-menu {
+        background: rgba(255, 255, 255, 0.06);
+        border: 0;
+        box-shadow: none;
+        margin: 0.15rem 0 0.4rem;
+    }
+
+    .lb-navbar .dropdown-item,
+    .lb-navbar .dropdown-header {
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .lb-navbar .dropdown-item .bi {
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    .lb-navbar .dropdown-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+    }
+
+    .lb-navbar .dropdown-divider {
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+}
+
+/* ---------- Page header ---------- */
+/* Only vertical padding: the container's own side padding lines the title up with the cards */
+.lb-page-header {
+    padding-top: 1.5rem;
+    padding-bottom: 1rem;
+}
+
+.lb-page-header h1 {
+    font-size: 1.5rem;
+    font-weight: 650;
+    margin: 0;
+    padding-left: 0.75rem;
+    border-left: 4px solid var(--lb-brand);
+    line-height: 1.3;
+}
+
+.lb-page {
+    padding-bottom: 3rem;
+}
+
+/* ---------- Cards ---------- */
+.lb-card {
+    background: var(--lb-surface);
+    border: 1px solid var(--lb-border);
+    border-radius: var(--lb-radius);
+    box-shadow: var(--lb-shadow);
+    padding: var(--lb-gap);
+    margin-bottom: var(--lb-gap);
+}
+
+.lb-card > :last-child,
+.lb-card .table:last-child {
+    margin-bottom: 0;
+}
+
+.lb-section-title {
+    font-size: 1.05rem;
+    font-weight: 650;
+    margin-bottom: 0.9rem;
+}
+
+/* Bootstrap cards used on newer pages match the same look */
+.lb-page .card {
+    border-color: var(--lb-border);
+    border-radius: var(--lb-radius);
+    box-shadow: var(--lb-shadow);
+}
+
+.lb-page .card-header {
+    background: var(--lb-surface);
+    border-bottom-color: var(--lb-border);
+    font-weight: 600;
+}
+
+/* ---------- Tables ---------- */
+.lb-page .table {
+    --bs-table-striped-bg: #f8f9fc;
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
+
+.lb-page .table > thead th {
+    color: var(--lb-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--lb-border) !important;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
+.lb-page .table > :not(caption) > * > * {
+    padding: 0.6rem 0.75rem;
+    border-bottom-color: var(--lb-border);
+}
+
+.lb-page .table td .btn {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.lb-page .table-responsive {
+    border-radius: 0.5rem;
+}
+
+/* ---------- Forms & tabs ---------- */
+.lb-page .form-control,
+.lb-page .form-select {
+    border-color: #d8dbe5;
+}
+
+.lb-page .form-control:focus,
+.lb-page .form-select:focus {
+    border-color: #a979a0;
+    box-shadow: 0 0 0 0.2rem rgba(102, 15, 86, 0.12);
+}
+
+.lb-page .form-floating > label {
+    color: var(--lb-muted);
+}
+
+.lb-page .nav-tabs {
+    border-bottom: 1px solid var(--lb-border);
+    gap: 0.25rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;      /* narrow screens scroll the tabs instead of wrapping */
+    scrollbar-width: none;
+}
+
+.lb-page .nav-tabs .nav-item {
+    flex-shrink: 0;
+}
+
+.lb-page .nav-tabs .nav-link {
+    border: 0;
+    border-bottom: 2px solid transparent;
+    color: var(--lb-muted);
+    font-weight: 500;
+    padding: 0.55rem 0.9rem;
+}
+
+.lb-page .nav-tabs .nav-link:hover {
+    color: var(--lb-text);
+}
+
+.lb-page .nav-tabs .nav-link.active {
+    color: var(--lb-brand);
+    background: transparent;
+    border-bottom-color: var(--lb-brand);
+}
+
+.lb-page .pagination {
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+}
+
+.lb-page .error-message:empty,
+.lb-page .error-message {
+    min-height: 1.25rem;
+    font-size: 0.875rem;
+}
+
+/* ---------- Account page, bank rates, quick add ---------- */
+.lb-balance {
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.lb-rate {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--lb-brand);
+}
+
+.lb-badge-type {
+    background: var(--lb-brand-soft);
+    color: var(--lb-brand);
+    font-weight: 600;
+}
+
+.lb-bank-name {
+    font-size: 0.95rem;
+    font-weight: 650;
+    margin: 0.5rem 0 0.25rem;
+}
+
+/* Same column widths for every bank on the Bank Rates page */
+.lb-rate-table {
+    table-layout: fixed;
+    min-width: 640px;
+}
+
+.lb-interest {
+    border-top: 1px dashed var(--lb-border);
+    padding-top: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+.lb-quick-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+}
+
+.lb-quick-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.75rem 0.25rem;
+    border: 1px solid var(--lb-border);
+    border-radius: 0.6rem;
+    background: var(--lb-surface);
+    color: var(--lb-text);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.lb-quick-btn:hover,
+.lb-quick-btn:focus {
+    border-color: #c99bbd;
+    background: var(--lb-brand-soft);
+    color: var(--lb-brand);
+}
+
+.lb-quick-btn:disabled {
+    opacity: 0.45;
+}
+
+.lb-quick-icon {
+    width: 2rem;
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--lb-brand-soft);
+    color: var(--lb-brand);
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+/* ---------- Internal transactions ---------- */
+.lb-kind-badge {
+    font-size: 0.8rem;
+    padding: 0.4em 0.7em;
+    background: var(--lb-brand-soft);
+    color: var(--lb-brand);
+}
+
+.lb-kind-badge[data-kind="DEPOSIT"] { background: #e5f6ec; color: #146c43; }
+.lb-kind-badge[data-kind="WITHDRAWAL"] { background: #fdf0e3; color: #a3530b; }
+.lb-kind-badge[data-kind="TRANSFER"] { background: #e7f0fd; color: #1d4f9c; }
+
+.lb-internal-summary {
+    color: var(--lb-muted);
+    border-top: 1px dashed var(--lb-border);
+    padding-top: 0.6rem;
+    margin-bottom: 0.75rem;
+    min-height: 1.6rem;
+}
+
+/* ---------- Login / sign-up ---------- */
+.lb-auth {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    background: radial-gradient(circle at 20% 0%, var(--lb-brand-soft), var(--lb-bg) 55%);
+}
+
+.lb-auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--lb-surface);
+    border: 1px solid var(--lb-border);
+    border-radius: 1rem;
+    box-shadow: 0 10px 30px rgba(16, 24, 40, 0.08);
+    padding: 2rem;
+}
+
+.lb-auth-brand {
+    font-weight: 700;
+    color: var(--lb-brand);
+    letter-spacing: 0.02em;
+    text-align: center;
+    margin-bottom: 0.25rem;
+}
+
+.lb-auth-card h1 {
+    font-size: 1.35rem;
+    font-weight: 650;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.lb-auth-card .form-floating > label {
+    color: var(--lb-muted);
+}
+
+.lb-auth-links {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--lb-muted);
+    margin: 0.35rem 0 0;
+}
+
+@media (max-width: 575.98px) {
+    .lb-card { padding: 1rem; }
+    .lb-page-header { padding-top: 1rem; }
+
+    /* Phones: tables scroll sideways inside their card instead of squeezing dates and amounts */
+    .lb-page .table-responsive .table th,
+    .lb-page .table-responsive .table td {
+        white-space: nowrap;
+    }
+}

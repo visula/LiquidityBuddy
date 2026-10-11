@@ -58,6 +58,7 @@ class PurchaseController extends PurchaseService
                 'link_type'   => ($payType === 'T') ? 'travel' : 'expense',
                 'link_id'     => $expense['data']['ExpenseSessionID'],
                 'plan_link'   => 'expense',
+                'allow_over_budget' => $request_data['allow_over_budget'] ?? false,
             ], $schedule);
         });
 
@@ -111,6 +112,7 @@ class PurchaseController extends PurchaseService
                 'link_type'   => 'purchase',
                 'link_id'     => $purchase['data']['PurchaseSessionID'],
                 'plan_link'   => 'purchase',
+                'allow_over_budget' => $request_data['allow_over_budget'] ?? false,
             ], $schedule);
 
             if(isset($paid['error_id'])){
@@ -150,10 +152,25 @@ class PurchaseController extends PurchaseService
         $plan = $request_data['collection_plan'] ?? [];
         $schedule = null;
 
+        // Monthly income (salary) is a continuous transaction: a recurring rule that
+        // posts the amount every month from the start date (see Recurring page).
+        if($type === 'monthly'){
+            $result = $this->recurringCreateProccess($userID, [
+                'direction'   => 'IN',
+                'account'     => $request_data['account_id'],
+                'method'      => $request_data['payment_method'] ?? '',
+                'budget'      => $request_data['budget_id'],
+                'amount'      => $amount,
+                'description' => $description,
+                'periodic'    => 'M',
+                'start_date'  => is_array($plan) ? ($plan['start_date'] ?? '') : '',
+            ]);
+
+            return $this->apiResult($result, 'Monthly income added');
+        }
+
         if($type === 'till'){
             $schedule = $this->normaliseSchedule(is_array($plan) ? $plan : []);
-        }elseif($type === 'monthly'){
-            $schedule = $this->normaliseSchedule(['schedule_type' => 'C'] + (is_array($plan) ? $plan : []));
         }
 
         $payment = [
@@ -206,6 +223,7 @@ class PurchaseController extends PurchaseService
             'description'     => $request_data['description'] ?? '',
             'reference'       => $request_data['reference'] ?? '',
             'date'            => $request_data['payment_date'] ?? '',
+            'allow_over_budget' => $request_data['allow_over_budget'] ?? false,
         ]);
 
         return $this->apiResult($result, 'Dues settled');

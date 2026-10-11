@@ -14,7 +14,7 @@ through each feature so you can check it works.
 
 | Tool | Version | Notes |
 |------|---------|-------|
-| PHP | 8.0 - 8.3 | Extensions: `intl`, `mbstring`, `mysqli`, `curl`, `json`. Tested on 8.3. |
+| PHP | 8.2 or newer | Extensions: `intl`, `mbstring`, `mysqli`, `curl`, `openssl`. Tested on 8.5 and 8.3. The app runs on CodeIgniter 4.7, which Composer installs. |
 | Composer | 2.x | |
 | MariaDB | 10.3+ | XAMPP ships MariaDB, which works. **MySQL is not supported by the migration**: it uses MariaDB's `ADD COLUMN IF NOT EXISTS`. |
 | Git | any | Git Bash on Windows also runs the `.sh` script. |
@@ -40,8 +40,10 @@ composer install
 This restores packages that aren't committed, including `firebase/php-jwt`, which login
 needs.
 
-> `composer install` rewrites a few tracked files under `vendor/` (autoload maps).
-> Don't commit them. Discard them with `git checkout -- vendor`.
+> `vendor/` isn't committed (it's in `.gitignore`), so `composer install` is required
+> after every fresh clone. It also installs CodeIgniter itself, into
+> `vendor/codeigniter4/framework`. Use `install`, not `composer update`: `update`
+> moves packages past the versions in `composer.lock`, which everyone else uses.
 
 ## 4. Configure `.env`
 
@@ -98,20 +100,41 @@ scripts/setup-local-db.sh            # Linux / macOS / Git Bash
 scripts\setup-local-db.bat           :: Windows (XAMPP)
 ```
 
+### No MariaDB installed? Use Docker
+
+If the script says `mysql/mariadb client not found on PATH`, or the only database server
+you have is MySQL, add `--docker`. The script creates a MariaDB 10.11 container named
+`liquiditybuddy-db` (data kept in the Docker volume `liquiditybuddy-db-data`) and uses the
+client inside it, so nothing else needs installing. Pick a port that's free; 3306 is often
+taken by another MySQL:
+
+```bash
+scripts/setup-local-db.sh --docker --port 3307 --fresh --group-orphans   # demo data
+scripts/setup-local-db.sh --docker --port 3307                           # keep data, migrate
+```
+
+Then point the app at it in `.env`:
+
+```ini
+database.default.port = 3307
+```
+
+The container restarts with Docker. Stop it with `docker stop liquiditybuddy-db`.
+
 ### Option C: by hand (HeidiSQL / phpMyAdmin)
 
 1. Back up your database.
-2. Run `DBBackup/Migrations/2026_10_02_account_payment_methods.sql` against `liquiditybuddy`.
+2. Run every file in `DBBackup/Migrations/` against `liquiditybuddy`, oldest first.
 
-**Check it worked.** Both scripts finish with a table like the one below. `new_tables_of_3`
-should be `3`, and every account should have at least one method:
+**Check it worked.** The scripts finish with a table like the one below. `new_tables_of_4`
+should be `4`, and every account should have at least one method:
 
 ```
-| new_tables_of_3 | active_payment_methods | accounts_without_method | hidden_ungrouped_accounts |
-|               3 |                     13 |                       0 |                         0 |
+| new_tables_of_4 | active_payment_methods | accounts_without_method | hidden_ungrouped_accounts |
+|               4 |                     13 |                       0 |                         0 |
 ```
 
-Script options (`.sh`): `--host`, `--port`, `--user`, `--password`, `--db NAME`,
+Script options (`.sh`): `--docker [NAME]`, `--host`, `--port`, `--user`, `--password`, `--db NAME`,
 `--no-backup`, `--yes`. Defaults come from `.env`.
 
 ## 6. Start the app
@@ -120,10 +143,15 @@ Script options (`.sh`): `--host`, `--port`, `--user`, `--password`, `--db NAME`,
 php spark serve
 ```
 
-Open **http://localhost:8080** and log in. With the demo data from option A, use:
+Open **http://localhost:8080** and log in with an email or a username. With the demo
+data from option A, use:
 
-- Email: `svisula@gmail.com`
-- Password: `Abc@12345`
+- Email `svisula@gmail.com` (or username `svisula` once the demo username is renamed,
+  see below), password `Abc@12345`
+
+Usernames are unique. The dump's demo user has the username `Visula`, so to sign up a
+new user called `visula`, first rename it:
+`UPDATE user SET username = 'svisula' WHERE email = 'svisula@gmail.com';`
 
 **With XAMPP Apache instead:** put the project under `htdocs`, set `app.baseURL` (step 4)
 to `http://localhost/LiquidityBuddy/public/`, and open that URL.
@@ -169,15 +197,21 @@ To start the demo over, run option A again.
 | Symptom | Cause / fix |
 |---------|-------------|
 | `Class "Firebase\JWT\JWT" not found` on login | Run `composer install`. |
+| `composer install` says `requires php ^8.2` | Your PHP is older than 8.2. Install a current PHP (8.5 works). |
+| `composer install` says `requires PHP extension ext-intl` | In that PHP's `php.ini`, set `extension_dir = "ext"` and uncomment `extension=intl` (also `curl`, `mbstring`, `mysqli`, `openssl`). |
 | Buttons do nothing, or requests fail / 404 | `app.baseURL` doesn't match the URL in the browser (step 4). |
 | A URL that used to work now returns **404** | Auto-routing is **off** on this branch for security. Every page must be listed in `app/Config/Routes.php`. |
 | Accounts missing from lists | The account has no account group. Assign one, or use `--group-orphans` on demo data. |
-| Migration errors such as `near 'IF NOT EXISTS'` | You're on MySQL. Use MariaDB, which XAMPP ships. |
+| Migration errors such as `near 'IF NOT EXISTS'` | You're on MySQL. Use MariaDB (XAMPP ships it), or `--docker` (step 5). |
+| `mysql/mariadb client not found on PATH` | Add `--docker --port 3307` (step 5), or install XAMPP / MariaDB. |
 | Payment dates are a day off | `app/Config/App.php` has `appTimezone = 'America/Chicago'`. For Sri Lanka, set `'Asia/Colombo'`. |
 | Google login fails | `google/apiclient` isn't installed: `composer require google/apiclient`. This isn't related to this branch. |
 | Need to undo the migration | Restore the backup the script made: `mysql -u root < writable/backups/<file>.sql` |
 
 ## 9. What changed
+
+Bank rates, account types, interest and Quick add: [`docs/BANK_RATES.md`](docs/BANK_RATES.md)
+(run `php spark bankrates:sync` once after the migrations).
 
 See [`docs/PAYMENT_METHODS.md`](docs/PAYMENT_METHODS.md) for the data model, the rules
 (ownership checks, credit limits, atomic payments, installments) and the JSON endpoints.

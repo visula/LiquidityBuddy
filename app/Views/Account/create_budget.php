@@ -25,10 +25,13 @@
             </div>
             <div class="row">
                 <div class="col-md-7 col-12">
-                    <?= $budget_details_container ?>
+                    <div class="lb-card">
+                        <h2 class="lb-section-title">Budgets</h2>
+                        <?= $budget_details_container ?>
+                    </div>
                 </div>
                 <div class="col-md-5 col-12">
-                    <div class="mb-3">
+                    <div class="lb-card">
                         <!-- <h3>New Budget Creation</h3> -->
                         <div class="form">
                             <div class="mb-3 d-flex row">
@@ -63,6 +66,13 @@
                                     </div>
                                 </div>
                             </div>
+                            <?php if (isset($unplannedIncome)) { ?>
+                            <div class="row">
+                                <small class="text-muted">Unplanned monthly income: <strong><?= number_format(max(0, $unplannedIncome['unplanned']), 2) ?></strong>
+                                    (income since <?= esc($unplannedIncome['from']) ?> of <?= number_format($unplannedIncome['income'], 2) ?>, less <?= number_format($unplannedIncome['planned'], 2) ?> already budgeted).
+                                    A new budget can't be larger than this.</small>
+                            </div>
+                            <?php } ?>
                             <div class="row">
                                 <p class="error-message">&nbsp;</p>
                             </div>

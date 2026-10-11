@@ -1,11 +1,3 @@
-$(document).ready(function(){
-    function currentMenuActive(menu_id) {
-        console.log(menu_id);
-        $('.menu-item-list .active').removeClass('active');
-        $('#'+menu_id).addClass('active');
-    }
-});
-
 /**
  * Shared helpers for the JSON endpoints (window.LB).
  * LB.post() normalises both response styles used by the app (echo'd JSON and
@@ -51,6 +43,16 @@ LB.post = function (path, data, onSuccess, errorTarget, $button) {
         })
         .fail(function (xhr) {
             var response = LB.parse(xhr.responseText);
+
+            // 0046 = over budget: the user may confirm and pay anyway (use case "Budget plan overboard")
+            if (response.code === '0046' && data && typeof data === 'object' && !data.allow_over_budget) {
+                if (window.confirm(response.message + '\n\nGo over the budget and continue?')) {
+                    if ($button) { $button.removeClass('disable-btn'); }
+                    LB.post(path, $.extend({}, data, { allow_over_budget: 1 }), onSuccess, errorTarget, $button);
+                    return;
+                }
+            }
+
             LB.showError(response.message || ('The request failed (' + xhr.status + ').'), errorTarget);
         })
         .always(function () {

@@ -24,13 +24,22 @@
                 ?>
             </div>
             <div class="row">
-                <div class="col-md-5 col-12">
-                    <?= $account_list_content ?>
+                <div class="col-lg-5 col-12">
+                    <div class="lb-card">
+                        <h2 class="lb-section-title">Accounts</h2>
+                        <?= $account_list_content ?>
+                    </div>
                 </div>
-                <div class="col-md-7 col-12">
-                    <?= $transaction_proccess_container ?>
+                <div class="col-lg-7 col-12">
+                    <div class="lb-card">
+                        <?= $transaction_proccess_container ?>
+                    </div>
                 </div>
-                <?= $transaction_details_container ?>
+                <div class="col-12">
+                    <div class="lb-card">
+                        <?= $transaction_details_container ?>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

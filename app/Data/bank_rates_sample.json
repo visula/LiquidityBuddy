@@ -1,0 +1,73 @@
+{
+  "notice": "Illustrative sample data for development. These are NOT real or current bank rates or charges. Other-bank ATM charges follow the commonly published LankaPay figure of Rs 30; check each bank's current tariff.",
+  "generatedAt": "2026-10-01",
+  "data": {
+    "products": [
+      { "id": "SAMPATH-SAV-REG", "bank": { "name": "Sampath Bank" }, "name": "Regular Savings", "category": "savings", "currency": "LKR", "minimumBalance": 500, "interest": { "annualRate": 3.00, "effectiveFrom": "2026-09-01" },
+        "charges": [
+          { "transaction": "withdrawal", "channel": "own_atm", "flat": 5 },
+          { "transaction": "withdrawal", "channel": "other_atm", "flat": 30, "note": "LankaPay shared ATM" },
+          { "transaction": "withdrawal", "channel": "counter", "flat": 0 },
+          { "transaction": "transfer", "channel": "online_own", "flat": 0 },
+          { "transaction": "transfer", "channel": "online_other", "flat": 30, "note": "CEFTS" }
+        ] },
+      { "id": "SAMPATH-SAV-PLUS", "bank": { "name": "Sampath Bank" }, "name": "Savings Plus", "category": "savings", "currency": "LKR", "minimumBalance": 25000, "interest": { "annualRate": 4.25, "effectiveFrom": "2026-09-01" },
+        "charges": [
+          { "transaction": "withdrawal", "channel": "own_atm", "flat": 0 },
+          { "transaction": "withdrawal", "channel": "other_atm", "flat": 30, "freePerMonth": 2, "note": "First 2 a month free" },
+          { "transaction": "withdrawal", "channel": "counter", "flat": 0 },
+          { "transaction": "transfer", "channel": "online_other", "flat": 25, "note": "CEFTS" }
+        ] },
+      { "id": "SAMPATH-CUR", "bank": { "name": "Sampath Bank" }, "name": "Current Account", "category": "current", "currency": "LKR", "minimumBalance": 5000, "interest": { "annualRate": 0, "effectiveFrom": "2026-09-01" },
+        "charges": [
+          { "transaction": "withdrawal", "channel": "own_atm", "flat": 5 },
+          { "transaction": "withdrawal", "channel": "other_atm", "flat": 30 },
+          { "transaction": "withdrawal", "channel": "counter", "flat": 0, "note": "Cheque withdrawals; cheque book charges not included" },
+          { "transaction": "transfer", "channel": "online_other", "flat": 30, "note": "CEFTS" }
+        ] },
+      { "id": "SAMPATH-FD-12M", "bank": { "name": "Sampath Bank" }, "name": "Fixed Deposit 12 months", "category": "fixed_deposit", "currency": "LKR", "minimumBalance": 10000, "interest": { "annualRate": 8.50, "effectiveFrom": "2026-09-01" },
+        "charges": [
+          { "transaction": "withdrawal", "channel": "counter", "flat": 0, "note": "Withdrawing before maturity reduces the interest paid" }
+        ] },
+      { "id": "COMBANK-SAV-REG", "bank": { "name": "Commercial Bank" }, "name": "Regular Savings", "category": "savings", "currency": "LKR", "minimumBalance": 1000, "interest": { "annualRate": 3.25, "effectiveFrom": "2026-09-15" },
+        "charges": [
+          { "transaction": "withdrawal", "channel": "own_atm", "flat": 0 },
+          { "transaction": "withdrawal", "channel": "other_atm", "flat": 30, "note": "LankaPay shared ATM" },
+          { "transaction": "withdrawal", "channel": "counter", "flat": 0 },
+          { "transaction": "transfer", "channel": "online_other", "flat": 30, "note": "CEFTS" }
+        ] },
+      { "id": "COMBANK-SAV-HIGH", "bank": { "name": "Commercial Bank" }, "name": "High Yield Savings", "category": "savings", "currency": "LKR", "minimumBalance": 100000, "interest": { "annualRate": 5.00, "effectiveFrom": "2026-09-15" },
+        "charges": [
+          { "transaction": "withdrawal", "channel": "own_atm", "flat": 0 },
+          { "transaction": "withdrawal", "channel": "other_atm", "flat": 30 },
+          { "transaction": "withdrawal", "channel": "counter", "flat": 0, "percent": 0.1, "min": 100, "max": 1000, "freePerMonth": 2, "note": "Counter withdrawals after 2 a month: 0.1% (min 100, max 1,000)" },
+          { "transaction": "transfer", "channel": "online_other", "flat": 0, "freePerMonth": 5 }
+        ] },
+      { "id": "COMBANK-CUR", "bank": { "name": "Commercial Bank" }, "name": "Current Account", "category": "current", "currency": "LKR", "minimumBalance": 10000, "interest": { "annualRate": 0, "effectiveFrom": "2026-09-15" },
+        "charges": [
+          { "transaction": "withdrawal", "channel": "own_atm", "flat": 0 },
+          { "transaction": "withdrawal", "channel": "other_atm", "flat": 30 },
+          { "transaction": "deposit", "channel": "counter", "flat": 0 },
+          { "transaction": "transfer", "channel": "online_other", "flat": 30, "note": "CEFTS" }
+        ] },
+      { "id": "COMBANK-FD-6M", "bank": { "name": "Commercial Bank" }, "name": "Fixed Deposit 6 months", "category": "fixed_deposit", "currency": "LKR", "minimumBalance": 10000, "interest": { "annualRate": 7.75, "effectiveFrom": "2026-09-15" } },
+      { "id": "HNB-SAV-REG", "bank": { "name": "Hatton National Bank" }, "name": "Regular Savings", "category": "savings", "currency": "LKR", "minimumBalance": 500, "interest": { "annualRate": 3.10, "effectiveFrom": "2026-08-20" },
+        "charges": [
+          { "transaction": "withdrawal", "channel": "own_atm", "flat": 0 },
+          { "transaction": "withdrawal", "channel": "other_atm", "flat": 30 },
+          { "transaction": "transfer", "channel": "online_other", "flat": 30, "note": "CEFTS" }
+        ] },
+      { "id": "HNB-CUR", "bank": { "name": "Hatton National Bank" }, "name": "Current Account", "category": "current", "currency": "LKR", "minimumBalance": 5000, "interest": { "annualRate": 0, "effectiveFrom": "2026-08-20" },
+        "charges": [
+          { "transaction": "withdrawal", "channel": "other_atm", "flat": 30 }
+        ] },
+      { "id": "BOC-SAV-REG", "bank": { "name": "Bank of Ceylon" }, "name": "Regular Savings", "category": "savings", "currency": "LKR", "minimumBalance": 500, "interest": { "annualRate": 2.75, "effectiveFrom": "2026-09-01" },
+        "charges": [
+          { "transaction": "withdrawal", "channel": "own_atm", "flat": 0 },
+          { "transaction": "withdrawal", "channel": "other_atm", "flat": 30 },
+          { "transaction": "transfer", "channel": "online_other", "flat": 30, "note": "CEFTS" }
+        ] },
+      { "id": "BOC-FD-12M", "bank": { "name": "Bank of Ceylon" }, "name": "Fixed Deposit 12 months", "category": "fixed_deposit", "currency": "LKR", "minimumBalance": 10000, "interest": { "annualRate": 8.25, "effectiveFrom": "2026-09-01" } }
+    ]
+  }
+}

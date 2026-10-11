@@ -16,14 +16,14 @@
 
             $data = [
                 'StoredText' => [
-                    'Header' => 'Report Page',
+                    'Header' => 'Reports',
                     'ScreenTitle' => 'Report',
                     'ErrorStatus' => 'Error Status: ',
                 ]
             ];
 
             $data['Head'] = $this->commonHead();
-            $data['CurrentID'] = 'transaction-page';
+            $data['CurrentID'] = ['income' => 'income-report', 'expense' => 'expense-report', 'budget' => 'budget-report', 'purchase' => 'purchcase-report'][$transactonType] ?? 'report-list';
 
             $accountService = new AccountService();
 

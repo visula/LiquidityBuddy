@@ -16,10 +16,14 @@ class AccountController extends PaymentService
             die;
         }
 
+        // Post recurring transactions (salary, rent ...) that fell due since the last visit
+        $this->postDueRecurring($this->userAccess());
+        $this->postDueInterest($this->userAccess());
+
         $data = [
             'StoredText' => [
-                'Header' => 'Main Menu',
-                'ScreenTitle' => 'User Login',
+                'Header' => 'Dashboard',
+                'ScreenTitle' => 'Dashboard',
                 'ErrorStatus' => 'Error Status: ',
             ]
         ];
@@ -32,11 +36,10 @@ class AccountController extends PaymentService
         // $this->limit = 0;
 
         // TODO:: Error Handling Method
+        // No accounts yet (e.g. a new user): start on Add Account. Sign-up already
+        // created a Default account group; Add Account sends users without one to Account Groups.
         if(isset($accountDetails['error_id'])){
-
-            // TODO:: Change the route the accout create URL
-            return $this->errorHandleLogAndPageRedirection($accountDetails, $this->init_trigger_url);
-            return redirect()->to(base_url('/account/group'))->with('msg', $accountDetails['error_message']);
+            return redirect()->to(base_url('/account/add'))->with('msg', $accountDetails['error_message']);
         }
 
         if(!isset($accountDetails[0])){
@@ -178,6 +181,7 @@ class AccountController extends PaymentService
 
         $data['paymentPlan'] = $this->periodic;
         $data['paymentMethodInfo'] = $this->paymentMethodList($this->userAccess());
+        $data['accountMeta'] = $this->accountTypeMap($this->userAccess());
         $data['transactionInfo']['paymentMethodMap'] = $this->paymentMethodMap($this->userAccess());
 
         $data['external_trans_content'] = view('Transaction/external_trans_module', $data);
@@ -212,8 +216,8 @@ class AccountController extends PaymentService
 
         $data = [
             'StoredText'=>[
-                'Header' => 'Login Details',
-                'ScreenTitle' => 'User Login',
+                'Header' => 'Transactions',
+                'ScreenTitle' => 'Transactions',
                 'ErrorStatus' => 'Error Status: ',
             ]
         ];
@@ -233,7 +237,11 @@ class AccountController extends PaymentService
         return view('Transaction/list', $data);
     }
 
-    /** POST /js-request/account/transferred - internal transfer between two of the user's accounts */
+    /**
+     * POST /js-request/account/transferred - deposit (cash -> bank), withdrawal
+     * (bank -> cash) or transfer between two of the user's accounts, plus the
+     * bank's charge for the channel used (channel, fee = override or '' for the listed charge).
+     */
     public function internalTransaction()
     {
         $userID = $this->apiUser();
@@ -251,20 +259,37 @@ class AccountController extends PaymentService
             return $this->apiError($requiredParameters);
         }
 
-        $result = $this->recordPayment($userID, [
-            'direction'   => 'TRANSFER',
-            'account'     => $request_data['from_account'],
-            'method'      => $request_data['payment_method'] ?? '',
-            'to_account'  => $request_data['to_account'],
-            'budget'      => $request_data['budget'],
-            'amount'      => $request_data['amount'],
-            'category'    => 'transfer',
-            'description' => $request_data['description'] ?? '',
-            'reference'   => $request_data['reference'] ?? '',
-            'date'        => $request_data['payment_date'] ?? '',
-        ]);
+        $result = $this->internalTransfer($userID, $request_data);
 
-        return $this->apiResult($result, 'Successfully tranferred to accounts');
+        if(isset($result['error_id'])){
+            return $this->apiError($result);
+        }
+
+        $label = ['DEPOSIT' => 'Deposit recorded', 'WITHDRAWAL' => 'Withdrawal recorded'][$result['data']['Kind']] ?? 'Transfer recorded';
+
+        return $this->apiResult($result, $label . ($result['data']['Fee'] > 0 ? ' with a bank charge of ' . number_format($result['data']['Fee'], 2) : ''));
+    }
+
+    /** POST /js-request/account/transfer/quote  (from_account, to_account, amount, channel, payment_date) */
+    public function internalTransferQuote()
+    {
+        $userID = $this->apiUser();
+
+        if($userID === null){
+            return $this->apiUnauthorised();
+        }
+
+        $request_data = $this->handlePOSTBodyDataList();
+        $quote = $this->transferQuote(
+            $userID,
+            $request_data['from_account'] ?? '',
+            $request_data['to_account'] ?? '',
+            $request_data['amount'] ?? 0,
+            (string) ($request_data['channel'] ?? ''),
+            (string) ($request_data['payment_date'] ?? '')
+        );
+
+        return $this->apiResult(isset($quote['error_id']) ? $quote : ['success' => true, 'data' => $quote], 'Quote');
     }
 
     public function addAccount()
@@ -281,8 +306,8 @@ class AccountController extends PaymentService
 
         $data = [
             'StoredText' => [
-                'Header' => 'Add New Account',
-                'ScreenTitle' => 'User Login',
+                'Header' => 'Accounts',
+                'ScreenTitle' => 'Accounts',
                 'ErrorStatus' => 'Error Status: ',
             ]
         ];
@@ -294,6 +319,10 @@ class AccountController extends PaymentService
         $accountGroupDetails = $this->activeAccountGroupsListAccessModule($this->userAccess());
         // $this->limit = 0;
 
+        // An account needs a group: without any, create one first
+        if(isset($accountGroupDetails['error_id'])){
+            return redirect()->to(base_url('/account/group'))->with('status', 'Create an account group before adding accounts.');
+        }
 
         if(!isset($accountGroupDetails[0])){
             $accountGroupsInfo[] = $accountGroupDetails;
@@ -302,6 +331,13 @@ class AccountController extends PaymentService
         }
         $data['accountGroupDetails'] = $accountGroupsInfo;
         $data['methodTypes'] = $this->paymentMethodTypes;
+
+        // Account type + bank product (with its charges) for the new account
+        $bank = new \App\Libraries\BankRateSync();
+        $bank->syncIfStale();
+        $data['accountTypes'] = \App\Libraries\BankRateSync::ACCOUNT_TYPES;
+        $data['bankProducts'] = $bank->products();
+        $data['productFees'] = $bank->fees(array_column($data['bankProducts'], 'sessionid'));
 
         // TODO:: link user default user
         // $this->limit = 0;
@@ -374,18 +410,48 @@ class AccountController extends PaymentService
             'is_default'   => true,
         ];
 
-        $result = $this->runAtomic(function () use ($userID, $accountName, $groupID, $amount, $methodInput) {
+        // What kind of account it is, and the bank product it is (savings, current ...)
+        $accountType = strtoupper((string) ($request_data['account_type'] ?? 'OTHER'));
+        $accountType = isset(\App\Libraries\BankRateSync::ACCOUNT_TYPES[$accountType]) ? $accountType : 'OTHER';
+        $productID = ($accountType === 'CASH') ? '' : trim((string) ($request_data['bank_product_id'] ?? ''));
+        $bankName = (string) ($request_data['bank_name'] ?? '');
+        $autoInterest = filter_var($request_data['auto_interest'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        if($productID !== ''){
+            $product = $this->isSessionID($productID) ? (new \App\Libraries\BankRateSync())->product($productID) : null;
+
+            if($product === null || $product['status'] !== 'A'){
+                return $this->apiError($this->paymentError('0063', 'Bank Product', 'That bank product is not available any more. Refresh the rates and pick another.'));
+            }
+
+            if($product['producttype'] !== $accountType && in_array($accountType, \App\Libraries\BankRateSync::BANK_ACCOUNT_TYPES, true)){
+                return $this->apiError($this->paymentError('0067', 'Bank Product', 'The bank product is a ' . strtolower(\App\Libraries\BankRateSync::TYPES[$product['producttype']] ?? 'different') . ' product; pick one that matches the account type.'));
+            }
+        }
+
+        $result = $this->runAtomic(function () use ($userID, $accountName, $groupID, $amount, $methodInput, $accountType, $productID, $bankName, $autoInterest) {
             $accountCreation = $this->accountInitProccess($userID, $accountName, $groupID, $amount);
 
             if(isset($accountCreation['error_id'])){
                 return $accountCreation;
             }
 
-            $method = $this->paymentMethodCreateProccess($userID, $accountCreation['AccountSessionID'], $methodInput);
+            $accountID = $accountCreation['AccountSessionID'];
+            $method = $this->paymentMethodCreateProccess($userID, $accountID, $methodInput);
 
             if(isset($method['error_id'])){
                 return $method;
             }
+
+            if($productID !== ''){
+                $link = $this->linkAccountProduct($userID, $accountID, $productID, $autoInterest);
+
+                if(isset($link['error_id'])){
+                    return $link;
+                }
+            }
+
+            $this->saveAccountType($userID, $accountID, $accountType, $bankName);
 
             return ['success' => true, 'data' => ['accountCreation' => $accountCreation, 'paymentMethod' => $method]];
         });
@@ -403,40 +469,33 @@ class AccountController extends PaymentService
             die;
         }
 
-        $data = [];
+        // Post recurring transactions (salary, rent ...) that fell due since the last visit
+        $this->postDueRecurring($this->userAccess());
+        $this->postDueInterest($this->userAccess());
+
+        $userID = $this->userAccess();
+
+        // The account must be the user's own; an account without transactions still opens
+        $account = $this->accountWithProduct($userID, $account_id);
+
+        if(isset($account['error_id'])){
+            return redirect()->to(base_url('/account/list'))->with('status', $account['error_message']);
+        }
 
         $data = [
             'StoredText' => [
-                'Header' => 'Account Page',
-                'ScreenTitle' => 'Account List',
+                'Header' => $account['AccountName'],
+                'ScreenTitle' => $account['AccountName'],
                 'ErrorStatus' => 'Error Status: ',
             ]
         ];
 
         $data['Head'] = $this->commonHead();
-        $data['CurrentID'] = 'account-list';
+        $data['CurrentID'] = $account_id; // highlights this account under Account List
 
-        // TODO:: link user default user
-        // $this->limit = 10;
-        $response = $this->activeTransactionListAccess($this->userAccess(), $account_id);
-        // $this->limit = 0;
+        $response = $this->activeTransactionListAccess($userID, $account_id);
+        $transaction = $this->rowsOf($response);
 
-        // TODO:: Error Handling Method
-        if(isset($response['error_id'])){
-            // TODO:: Change the route the accout create URL
-            if ($response['error_id'] == '0004') {
-                # code...
-                return redirect()->to(base_url($this->init_trigger_url))->with('msg', 'No transaction for the selected account');
-            }
-            return $this->errorHandleLogAndPageRedirection($response, $this->init_trigger_url);
-        }
-
-        if(!isset($response[0])){
-            $transaction[] = $response;
-        }else{
-            $transaction = $response;
-        }
-        
         $data['transactionInfo'] = [
             'page_limit' => 10,
             'count' => count($transaction),
@@ -447,8 +506,30 @@ class AccountController extends PaymentService
         ];
 
         $data['transaction_details_container'] = view('Transaction/transaction_details_module', $data['transactionInfo']);
-        $data['accountPaymentMethods'] = $this->isSessionID($account_id) ? $this->paymentMethodList($this->userAccess(), $account_id) : [];
+        $data['accountPaymentMethods'] = $this->paymentMethodList($userID, $account_id);
         $data['accountID'] = $account_id;
+        $data['account'] = $account;
+
+        // Bank product, rate, a better offer of the same type, interest due
+        $bank = new \App\Libraries\BankRateSync();
+        $bank->syncIfStale();
+        $linked = $account['BankProductSessionID'] ? $bank->product($account['BankProductSessionID']) : null;
+        $data['bankProducts'] = $bank->products();
+        $data['productTypes'] = \App\Libraries\BankRateSync::TYPES;
+        $data['accountTypes'] = \App\Libraries\BankRateSync::ACCOUNT_TYPES;
+        $data['accountFees'] = $linked ? ($bank->fees([$linked['sessionid']])[$linked['sessionid']] ?? []) : [];
+        $data['betterProduct'] = $linked ? $bank->betterThan($linked) : null;
+        $quote = $linked ? $this->interestQuote($userID, $account_id, 'today', $account) : null;
+        $data['interestDue'] = (is_array($quote) && ! isset($quote['error_id'])) ? $quote : null;
+
+        // Quick actions: other accounts (transfer / withdraw), budgets
+        $data['otherAccounts'] = array_values(array_filter($this->rowsOf($this->activeAccountListAccessModule($userID)), static function ($row) use ($account_id) {
+            return $row['AccountSessionID'] !== $account_id;
+        }));
+        $data['cashAccountIDs'] = array_values(array_unique(array_column(array_filter($this->paymentMethodList($userID), static function ($method) {
+            return $method['PaymentMethodType'] === 'CASH';
+        }), 'AccountSessionID')));
+        $data['budgetInfo'] = $this->rowsOf($this->budgetList($userID));
 
         return view('Account/page', $data);
     }
@@ -543,14 +624,14 @@ class AccountController extends PaymentService
 
         $data = [
             'StoredText' => [
-                'Header' => 'Account Group Page',
-                'ScreenTitle' => 'Account Group List',
+                'Header' => 'Account Groups',
+                'ScreenTitle' => 'Account Groups',
                 'ErrorStatus' => 'Error Status: ',
             ]
         ];
 
         $data['Head'] = $this->commonHead();
-        $data['CurrentID'] = 'account-group-list';
+        $data['CurrentID'] = 'account-group';
 
         // TODO:: link user default user
         // $this->limit = 10;
@@ -690,13 +771,13 @@ class AccountController extends PaymentService
         $data = [];
         
         $data['StoredText'] = [
-            'Header' => 'Create Budget',
-            'ScreenTitle' => 'Create Budget',
+            'Header' => 'Budgets',
+            'ScreenTitle' => 'Budgets',
             'ErrorStatus' => 'Error Status: ',
         ];
 
         $data['Head'] = $this->commonHead();
-        $data['CurrentID'] = 'create-new-budget';
+        $data['CurrentID'] = 'budget-proccesss';
 
         $this->limit = 10;
         $response = $this->budgetList($this->userAccess());
@@ -720,6 +801,11 @@ class AccountController extends PaymentService
                 $budgets = $response;
             }
 
+            // Spent / left in the current period (the Default budget is the unplanned pool, not limited)
+            foreach ($budgets as $key => $budget) {
+                $budgets[$key]['Usage'] = $this->budgetUsage($this->userAccess(), $budget, date('Y-m-d'));
+            }
+
             $data['budgetInfo'] = [
                 'page_limit' => 10,
                 'count' => count($budgets),
@@ -732,74 +818,75 @@ class AccountController extends PaymentService
             $data['budget_details_container'] = view('Account/commonModule/budget_details_module', $data['budgetInfo']);
         }
 
+        $data['unplannedIncome'] = $this->unplannedIncome($this->userAccess(), 'M');
+
         return view('Account/create_budget', $data);
     }
 
+    /** POST /js-request/budget/create  (flowchart "Set Up Budget": amount must fit the unplanned income) */
     public function createBudget(){
-        $budgetName = $this->request->getPost('budgetName');
-        $budgetPlan = $this->request->getPost('budgetPlan');
-        $budgetAmount = $this->request->getPost('budgetAmount');
+        $userID = $this->apiUser();
 
-        // TODO:: link user default user
-        $budgetCreation = $this->budgetInitProccess($this->userAccess(), $budgetName, $budgetPlan, $budgetAmount);
-
-        // TODO:: Error Handling Method
-        if(isset($budgetCreation['error_id'])){
-            return $this->errorHandleforAPIResponses($budgetCreation);
+        if($userID === null){
+            return $this->apiUnauthorised();
         }
 
-        $response = [
-            'data' => [
-                'success'  => true,
-                'response' => 'Successfully created budget',
-                'data' => [
-                    'budgetCreation' => $budgetCreation
-                    ]
-            ],
-            'code' => 200
-        ];
+        $request_data = $this->handlePOSTBodyDataList();
 
-        echo json_encode($response['data']);
-        exit;
+        if(strcasecmp(trim((string) ($request_data['budgetName'] ?? '')), 'Default') === 0){
+            return $this->apiError($this->paymentError('0048', 'Budget', 'The name "Default" is reserved for the unplanned income budget.'));
+        }
+
+        $budget = $this->validateBudget($userID, $request_data['budgetName'] ?? '', $request_data['budgetPlan'] ?? '', $request_data['budgetAmount'] ?? '');
+
+        if(isset($budget['error_id'])){
+            return $this->apiError($budget);
+        }
+
+        $budgetCreation = $this->budgetInitProccess($userID, $budget['name'], $budget['periodic'], $budget['amount']);
+
+        return $this->apiResult($budgetCreation, 'Successfully created budget');
     }
 
+    /** POST /js-request/budget/update */
     public function updateBudget(){
+        $userID = $this->apiUser();
+
+        if($userID === null){
+            return $this->apiUnauthorised();
+        }
+
         $request_data = $this->handlePOSTBodyDataList();
 
         $requiredParameters = $this->handleRequiredParameters($request_data, ['budget_id','budget_name','budget_plan','budget_amount']);
 
         if(isset($requiredParameters['error_id'])){
-            return $requiredParameters;
+            return $this->apiError($requiredParameters);
         }
 
         $budgetID = $request_data['budget_id'];
-        $budgetName = $request_data['budget_name'];
-        $budgetPlan = $request_data['budget_plan'];
-        $budgetAmount = $request_data['budget_amount'];
+        $current = $this->budgetRow($userID, $budgetID);
 
-        
-
-        // TODO:: link user default user
-        $budgetUpdate = $this->budgetUpdateProccess($this->userAccess(), $budgetID, $budgetName ,$budgetPlan, $budgetAmount);
-
-        // TODO:: Error Handling Method
-        if(isset($budgetUpdate['error_id'])){
-            return $this->errorHandleforAPIResponses($budgetUpdate);
+        if($current === null){
+            return $this->apiError($this->paymentError('0035', 'Budget', 'The selected budget was not found.'));
         }
 
-        $response = [
-            'data' => [
-                'success'  => true,
-                'response' => 'Successfully updated budget',
-                'data' => [
-                    'budgetUpdate' => $budgetUpdate
-                    ]
-            ],
-            'code' => 200
-        ];
+        $isDefault = $this->isDefaultBudget($current);
+        $renamingToDefault = strcasecmp(trim((string) $request_data['budget_name']), 'Default') === 0;
 
-        echo json_encode($response['data']);
-        exit;
+        if($isDefault !== $renamingToDefault){
+            return $this->apiError($this->paymentError('0048', 'Budget', 'The "Default" budget cannot be renamed, and no other budget can take that name.'));
+        }
+
+        $budget = $this->validateBudget($userID, $request_data['budget_name'], $request_data['budget_plan'], $request_data['budget_amount'], $budgetID);
+
+        if(isset($budget['error_id'])){
+            return $this->apiError($budget);
+        }
+
+        $budgetUpdate = $this->budgetUpdateProccess($userID, $budgetID, $budget['name'], $budget['periodic'], $budget['amount']);
+
+        return $this->apiResult($budgetUpdate, 'Successfully updated budget');
     }
 
     public function deleteBudget(){

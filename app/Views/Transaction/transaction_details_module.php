@@ -1,20 +1,19 @@
 <script type="text/javascript" charset="utf8" src="<?= base_url('assets/js/common_modules/pagination.js') ?>"></script>
-<div class="mb-3 w-100 bg-shadow p-3">
-    <h3 class="text-center font-color-3">Transaction Details</h3>
-</div>
+<h2 class="lb-section-title">Transactions</h2>
+<div class="table-responsive">
 <table class="table table-striped mb-3" id="transaction-table">
     <thead>
     <tr>
-        <th class="text-center">Description</th>
+        <th>Description</th>
         <th class="text-center">Date</th>
-        <th class="text-center">Income</th>
-        <th class="text-center">Expense</th>
-        <th class="text-center">Running Balance</th>
+        <th class="text-end">Income</th>
+        <th class="text-end">Expense</th>
+        <th class="text-end">Balance</th>
         <?php if(isset($paymentMethodMap)){ ?>
         <th class="text-center">Method</th>
         <?php } ?>
         <?php if($allow_all_accounts){  ?>
-        <th>Account Name</th>
+        <th>Account</th>
         <?php } ?>
     </tr>
     </thead>
@@ -57,6 +56,7 @@
             ?>
     </tbody>
 </table>
+</div>
 <?php if($page_count > 1){ ?>
     <div class="d-flex justify-content-center">
         <ul class="pagination transaction" pagination-type="transaction">

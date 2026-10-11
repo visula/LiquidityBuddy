@@ -1,0 +1,14 @@
+Bank Rate Sync
+ [x] Maps nested fields
+ [x] Fraction rates become percent
+ [x] Unknown type and missing code fall back
+ [x] Rejects items without bank name or valid rate
+ [x] Fixed bank name for single bank feeds
+ [x] Strips markup from feed text
+ [x] Dig follows dot paths and list indexes
+ [x] Bundled sample feed maps every product
+ [x] Maps charges through type and channel maps
+ [x] Skips bad charges
+ [x] Calculates flat percent free and caps
+ [x] Sample feed charges are all usable
+

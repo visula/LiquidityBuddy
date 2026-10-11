@@ -14,19 +14,23 @@ class TransactionController extends PaymentService
             return redirect()->to(base_url('/login'));
             die;
         }
+
+        // Post recurring transactions (salary, rent ...) that fell due since the last visit
+        $this->postDueRecurring($this->userAccess());
+        $this->postDueInterest($this->userAccess());
         
         $data = [];
 
         $data = [
             'StoredText' => [
-                'Header' => 'Transaction Page',
-                'ScreenTitle' => 'Transaction',
+                'Header' => 'Transactions',
+                'ScreenTitle' => 'Transactions',
                 'ErrorStatus' => 'Error Status: ',
             ]
         ];
 
         $data['Head'] = $this->commonHead();
-        $data['CurrentID'] = 'transaction-page';
+        $data['CurrentID'] = 'transaction-proccesss';
 
         // $this->limit = 5;
         $accountDetails = $this->activeAccountListAccessModule($this->userAccess());
@@ -166,6 +170,7 @@ class TransactionController extends PaymentService
         $data['outstandingDues'] = $this->outstandingPayables($this->userAccess());
         $data['paymentPlan'] = $this->periodic;
         $data['paymentMethodInfo'] = $this->paymentMethodList($this->userAccess());
+        $data['accountMeta'] = $this->accountTypeMap($this->userAccess());
 
         $data['external_trans_content'] = view('Transaction/external_trans_module', $data);
         if(isset($accounts[1])){

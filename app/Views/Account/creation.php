@@ -27,10 +27,13 @@
             </div>
             <div class="row">
                 <div class="col-md-6 col-12">
-                    <?= $account_list_content ?>
+                    <div class="lb-card">
+                        <h2 class="lb-section-title">Your accounts</h2>
+                        <?= $account_list_content ?>
+                    </div>
                 </div>
                 <div class="col-md-6 col-12">
-                    <div class="mb-3">
+                    <div class="lb-card">
                         <div class="form">
                             <div class="mb-3 d-flex row">
                                 <div class="col-6 mb-3">
@@ -54,6 +57,60 @@
                                     <div class="form-floating">
                                         <input type="text" class="form-control" placeholder="Enter the current amount" name="amount" id="amount">
                                         <label for="amount">Current Amount</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php
+                                $pct = static function ($value) { return rtrim(rtrim(number_format((float) $value, 2), '0'), '.'); };
+                                $productsByBank = [];
+                                foreach ($bankProducts as $product) { $productsByBank[$product['bankname']][] = $product; }
+                            ?>
+                            <div class="mb-3 d-flex row" id="account-type-section">
+                                <div class="col-12"><h6 class="mb-2">Account type and bank</h6></div>
+                                <div class="col-6 mb-3">
+                                    <div class="form-floating">
+                                        <select class="form-select" id="account-type">
+                                            <?php foreach ($accountTypes as $code => $label) { ?>
+                                                <option value="<?= esc($code, 'attr') ?>" <?= $code === 'SAVINGS' ? 'selected' : '' ?>><?= esc($label) ?></option>
+                                            <?php } ?>
+                                        </select>
+                                        <label for="account-type">Account type</label>
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-3 bank-only">
+                                    <div class="form-floating">
+                                        <select class="form-select" id="bank-product">
+                                            <option value="">Not listed / choose later</option>
+                                            <?php foreach ($productsByBank as $bankName => $products) { ?>
+                                                <optgroup label="<?= esc($bankName, 'attr') ?>">
+                                                    <?php foreach ($products as $product) { ?>
+                                                        <option value="<?= esc($product['sessionid'], 'attr') ?>"
+                                                                data-type="<?= esc($product['producttype'], 'attr') ?>"
+                                                                data-rate="<?= esc($pct($product['interestrate']), 'attr') ?>"
+                                                                data-fees="<?= esc(\App\Libraries\BankRateSync::feeSummary($productFees[$product['sessionid']] ?? []), 'attr') ?>"><?= esc($bankName) ?> · <?= esc($product['productname']) ?> · <?= $pct($product['interestrate']) ?>%</option>
+                                                    <?php } ?>
+                                                </optgroup>
+                                            <?php } ?>
+                                        </select>
+                                        <label for="bank-product">Bank product</label>
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-3 bank-only" id="bank-name-col">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="bank-name" placeholder="Bank" maxlength="100" list="bank-name-list">
+                                        <label for="bank-name">Bank (if the product isn't listed)</label>
+                                        <datalist id="bank-name-list">
+                                            <?php foreach (array_keys($productsByBank) as $bankName) { ?><option value="<?= esc($bankName, 'attr') ?>"><?php } ?>
+                                        </datalist>
+                                    </div>
+                                </div>
+                                <div class="col-12 mb-2 bank-only">
+                                    <small class="text-muted" id="bank-product-hint">Pick the bank product to get its interest rate and its withdrawal and transfer charges from <a href="<?= base_url('bank-rates') ?>">Bank Rates</a>.</small>
+                                </div>
+                                <div class="col-12 mb-2 d-none" id="auto-interest-row">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="new-auto-interest">
+                                        <label class="form-check-label small" for="new-auto-interest">Post interest automatically each month</label>
                                     </div>
                                 </div>
                             </div>
@@ -95,7 +152,7 @@
                         <div class="mb-3 justify-content-center ">
                             <a id="create-account-btn" class="btn btn-primary">Create Account</a>
                             <a id="update-account-btn" class="btn btn-primary d-none">Update Account</a>
-                            <a id="cancel-account-btn" class="btn btn-secondary">Cancelled Account</a>
+                            <a id="cancel-account-btn" class="btn btn-secondary">Cancel</a>
                         </div>
                     </div>
                 </div>

@@ -25,10 +25,13 @@
             </div>
             <div class="row">
                 <div class="col-md-5 col-12">
-                    <?= $account_group_details_container ?>
+                    <div class="lb-card">
+                        <h2 class="lb-section-title">Account groups</h2>
+                        <?= $account_group_details_container ?>
+                    </div>
                 </div>
                 <div class="col-md-7 col-12">
-                    <div class="mb-3">
+                    <div class="lb-card">
                         <div class="form">
                             <div class="mb-3 d-flex row">
                                 <div class="col-6 mb-3">

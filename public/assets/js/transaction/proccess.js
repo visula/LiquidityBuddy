@@ -68,26 +68,18 @@ if (!window.__process_initialized__) {
             $(this).val(amount.toFixed(2));
         });
 
-        $('#transferred-btn').on('click',function(){
-            var $internal = $('#internal');
-            var amount = parseFloat($internal.find('#amount').val()) || 0;
+        // The Internal tab (deposit / withdrawal / transfer) is handled by transaction/internal.js
 
-            if (amount <= 0) {
-                LB.showError('The transfer amount must be greater than zero.');
-                return;
-            }
-
-            LB.post('js-request/account/transferred', {
-                amount: amount.toFixed(2),
-                from_account: $internal.find('#current-account-list').val(),
-                to_account: $internal.find('#to-account-list').val(),
-                budget: $internal.find('#budget-list').val(),
-                payment_method: LB.paymentMethodOf($internal),
-                description: $internal.find('#description').val(),
-                reference: $internal.find('#reference').val()
-            }, function () {
-                window.location.reload();
-            }, null, $(this));
-        });
+        // Open the tab named in the URL, e.g. /account/list#Internal - on load, and when
+        // only the hash changes (a #Internal link followed while already on the page)
+        function openTabFromHash() {
+            if (!window.location.hash) { return; }
+            var wanted = window.location.hash.toLowerCase();
+            $('.select-transction-type').filter(function () {
+                return String($(this).attr('href')).toLowerCase() === wanted;
+            }).first().trigger('click');
+        }
+        openTabFromHash();
+        $(window).on('hashchange', openTabFromHash);
     });
 }

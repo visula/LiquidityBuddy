@@ -128,6 +128,7 @@ trait PaymentTraits{
             'PaymentLinkSessionID'      => 'linksessionid',
             'PaymentAmount'             => 'amount',
             'PaymentReference'          => 'reference',
+            'PaymentChannel'            => 'channel',
             'PaymentDescription'        => 'description',
             'PaymentDate'               => 'date',
             'PaymentDateTime'           => 'datetime',

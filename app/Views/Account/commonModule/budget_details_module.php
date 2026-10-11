@@ -1,9 +1,13 @@
+<div class="table-responsive">
 <table class="table table-striped mb-3">
     <thead>
     <tr>
-        <th>Budget Name</th>
-        <th>Budget Amount</th>
-        <th>Budget Period</th>
+        <th>Budget</th>
+        <th class="text-end">Amount</th>
+        <th class="text-center">Period</th>
+        <th class="text-end">Spent</th>
+        <th class="text-end">Left</th>
+        <?php if(!empty($edit_mode)){ ?><th></th><?php } ?>
     </tr>
     </thead>
     <tbody>
@@ -11,17 +15,20 @@
             $currentPage = ceil(($key + 1) / $page_limit);
             ?>
             <tr class="t-row-budget-action <?php if(($key + 1) > $page_limit){echo 'd-none';}?>" data-page-no="budget-page-no-<?= $currentPage?>" id="<?= $budget['BudgetSessionID']?>">
-                <td class="budget-name"><?= $budget['BudgetName'] ?></td>
+                <td class="budget-name"><?= esc($budget['BudgetName']) ?></td>
                 <td class="text-end budget-amount"><?= number_format($budget['BudgetAmount'],2) ?></td>
-                <td class="text-center budget-period" data-budget-period="<?= $budget['BudgetPeriodic'] ?>"><?= $payment_plan[$budget['BudgetPeriodic']] ?></td>
+                <td class="text-center budget-period" data-budget-period="<?= $budget['BudgetPeriodic'] ?>"><?= esc($payment_plan[$budget['BudgetPeriodic']] ?? $budget['BudgetPeriodic']) ?></td>
+                <?php $usage = $budget['Usage'] ?? null; ?>
+                <td class="text-end"><?= $usage ? number_format($usage['spent'], 2) : '-' ?></td>
+                <td class="text-end <?= ($usage && $usage['remaining'] < 0) ? 'text-danger' : '' ?>"><?= $usage ? number_format($usage['remaining'], 2) : '<small class="text-muted">unplanned pool</small>' ?></td>
                 <?php if($edit_mode){ ?>
-                    <td class="text-center"><a data-budget-id="<?= $budget['BudgetSessionID'] ?>" class="btn btn-primary update-budget-btn">Update</a></td>
-                    <td class="text-center"><a data-budget-id="<?= $budget['BudgetSessionID'] ?>"  class="btn btn-danger delete-budget-btn">Remove</a></td>
+                    <td class="text-end text-nowrap"><a data-budget-id="<?= $budget['BudgetSessionID'] ?>" class="btn btn-sm btn-outline-primary update-budget-btn">Update</a> <a data-budget-id="<?= $budget['BudgetSessionID'] ?>"  class="btn btn-sm btn-outline-danger delete-budget-btn">Remove</a></td>
                 <?php } ?>
             </tr>
         <?php } ?>
     </tbody>
 </table>
+</div>
 <?php if($page_count > 1){ ?>
     <ul class="pagination budget" pagination-type="budget">
         <li class="page-item disabled" disabled=true><a class="page-link previous-page" href="#">Previous</a></li>

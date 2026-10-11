@@ -56,8 +56,9 @@
             </div>
         </div>
 
-        <h5>By account and payment method</h5>
-        <div class="table-responsive mb-4">
+        <div class="lb-card">
+        <h2 class="lb-section-title">By account and payment method</h2>
+        <div class="table-responsive">
             <table class="table table-sm table-bordered">
                 <thead>
                     <tr><th>Account</th><th>Payment method</th><th class="text-end">Paid out</th><th class="text-end">Received</th><th class="text-end">Payments</th></tr>
@@ -78,8 +79,10 @@
                 </tbody>
             </table>
         </div>
+        </div>
 
-        <h5>Payments <small class="text-muted">(click a row for its transactions and settled dues)</small></h5>
+        <div class="lb-card">
+        <h2 class="lb-section-title">Payments <small class="text-muted fw-normal">(click a row for its transactions and settled dues)</small></h2>
         <div class="table-responsive">
             <table class="table table-sm table-striped">
                 <thead>
@@ -104,7 +107,8 @@
                                 <?= esc($payment['PaymentDescription']) ?>
                                 <?php if ($payment['PaymentReference']) { ?><br><small class="text-muted">Ref: <?= esc($payment['PaymentReference']) ?></small><?php } ?>
                             </td>
-                            <td><?= esc($directionLabel[$payment['PaymentDirection']] ?? $payment['PaymentDirection']) ?> <small class="text-muted"><?= esc($payment['PaymentCategory']) ?></small></td>
+                            <td><?= esc($payment['PaymentCategory'] === 'fee' ? 'Bank charge' : ($directionLabel[$payment['PaymentDirection']] ?? $payment['PaymentDirection'])) ?> <small class="text-muted"><?= esc($payment['PaymentCategory']) ?></small>
+                                <?php if (! empty($payment['PaymentChannel'])) { ?><br><small class="text-muted"><?= esc(\App\Libraries\BankRateSync::CHANNELS[$payment['PaymentChannel']] ?? $payment['PaymentChannel']) ?></small><?php } ?></td>
                             <td><?= esc($payment['AccountName']) ?><?php if ($payment['ToAccountName']) { ?> &rarr; <?= esc($payment['ToAccountName']) ?><?php } ?></td>
                             <td><?= esc($payment['PaymentMethodLabel']) ?></td>
                             <td><span class="badge <?= $settlementBadge[$payment['PaymentSettlementType']] ?? 'bg-secondary' ?>"><?= esc(ucfirst(strtolower($payment['PaymentSettlementType']))) ?></span></td>
@@ -148,6 +152,7 @@
                     <?php } ?>
                 </tbody>
             </table>
+        </div>
         </div>
     </div>
 <?= $this->endSection() ?>

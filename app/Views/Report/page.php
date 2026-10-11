@@ -14,6 +14,7 @@
 <?= $this->section("content") ?>
     
     <div class="container" id="report-container" data-transaction-module-type="<?= $transactonType ?>">
+      <div class="lb-card">
         <div class="row justify-content-center">
             <?php if($accountSearchActive){ ?>
                 <div class="col-3">
@@ -58,6 +59,7 @@
             <a id="report-generate" class="btn btn-primary">Generate Report</a>
             <button id="report-export" class="btn btn-secondary ms-2">Export Report</button>
         </div>
+      </div>
         <div class="col-12 mb-5" id="report-container-summary">
         </div>
         <div class="col-12" id="report-container-data">

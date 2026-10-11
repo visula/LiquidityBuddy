@@ -11,7 +11,9 @@
     <div class="container">
         <div class="row">
             <div class="col-12">
-              <?= $transaction_proccess_container ?>
+              <div class="lb-card">
+                <?= $transaction_proccess_container ?>
+              </div>
             </div>
         </div>
     </div>

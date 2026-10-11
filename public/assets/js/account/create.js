@@ -35,11 +35,66 @@ $(document).ready(function(){
             method_type: $('#method-type').val(),
             method_name: $('#method-name').val(),
             method_reference: $('#method-reference').val(),
-            credit_limit: $('#credit-limit').val()
+            credit_limit: $('#credit-limit').val(),
+            account_type: $typeSection.find('#account-type').val(),
+            bank_name: $typeSection.find('#bank-name').val(),
+            bank_product_id: $typeSection.find('#bank-product').val(),
+            auto_interest: $typeSection.find('#new-auto-interest').is(':checked') ? 1 : 0
         }, function () {
             window.location.reload();
         }, '.error-message', $(this));
     });
+
+    // ---- Account type and bank product (Add Account form only) ----
+    var $typeSection = $('#account-type-section');
+
+    function syncAccountType() {
+        var type = $typeSection.find('#account-type').val();
+        var isCash = type === 'CASH';
+        var $product = $typeSection.find('#bank-product');
+
+        $typeSection.find('.bank-only').toggleClass('d-none', isCash);
+        $('#auto-interest-row').toggleClass('d-none', isCash || !$product.val());
+
+        // Only products of this type (savings, current ...) can be picked
+        $product.find('option[data-type]').each(function () {
+            var fits = $(this).attr('data-type') === type;
+            $(this).prop('hidden', !fits).prop('disabled', !fits);
+        });
+        if ($product.find('option:selected').prop('disabled')) { $product.val(''); }
+
+        // Sensible default payment method for the type
+        var method = { CASH: 'CASH', CREDIT_CARD: 'CREDIT_CARD', SAVINGS: 'DEBIT_CARD', CURRENT: 'DEBIT_CARD' }[type] || 'BANK_TRANSFER';
+        $('#method-type').val(method).trigger('change');
+        productHint();
+    }
+
+    function productHint() {
+        var $option = $typeSection.find('#bank-product option:selected');
+        var $hint = $('#bank-product-hint');
+
+        var isCash = $typeSection.find('#account-type').val() === 'CASH';
+
+        if (!$option.val()) {
+            $hint.html($hint.data('default'));
+            $('#auto-interest-row').addClass('d-none');
+            $('#bank-name-col').toggleClass('d-none', isCash);
+            return;
+        }
+
+        // The product names the bank; interest posting only matters when it pays interest
+        $('#bank-name-col').addClass('d-none');
+        $typeSection.find('#bank-name').val('');
+        $hint.text($option.attr('data-rate') + '% p.a.' + ($option.attr('data-fees') ? ' · Charges: ' + $option.attr('data-fees') : ''));
+        $('#auto-interest-row').toggleClass('d-none', parseFloat($option.attr('data-rate')) <= 0);
+    }
+
+    if ($typeSection.length) {
+        $('#bank-product-hint').data('default', $('#bank-product-hint').html());
+        $typeSection.on('change', '#account-type', syncAccountType);
+        $typeSection.on('change', '#bank-product', productHint);
+        syncAccountType();
+    }
 
     // Credit limit only applies to credit cards
     $('#method-type').on('change', function () {
@@ -59,6 +114,7 @@ $(document).ready(function(){
         $('#create-account-btn').addClass('d-none');
         $('#update-account-btn').removeClass('d-none');
         $('#default-method-section').addClass('d-none');
+        $('#account-type-section').addClass('d-none');
     })
 
     $(document).on('click', '#cancel-account-btn', function () {            
@@ -115,6 +171,7 @@ $(document).ready(function(){
         $('#create-account-btn').removeClass('d-none');
         $('#update-account-btn').addClass('d-none');
         $('#default-method-section').removeClass('d-none');
+        $('#account-type-section').removeClass('d-none');
         $('#account-name').val('');
         $('#amount').val(0);
         $('#account-group-list').val($('#account-group-list').data('default-value'));

@@ -1,31 +1,16 @@
 <?php
 
-namespace Config;
+use CodeIgniter\Router\RouteCollection;
 
-// Create a new instance of our RouteCollection class.
-$routes = Services::routes();
-
-// Load the system's routing file first, so that the app and ENVIRONMENT
-// can override as needed.
-if (file_exists(SYSTEMPATH . 'Config/Routes.php')) {
-    require SYSTEMPATH . 'Config/Routes.php';
-}
-
-/*
- * --------------------------------------------------------------------
- * Router Setup
- * --------------------------------------------------------------------
+/**
+ * Router options (default controller, 404 override, auto routing ...) live in
+ * app/Config/Routing.php. Auto routing stays OFF: with it on, every public
+ * controller/service method was callable by URL without login (e.g.
+ * GET /AccountController/transactionInitProccess/... posted money into an
+ * account). Every page and endpoint of the app is defined explicitly below.
+ *
+ * @var RouteCollection $routes
  */
-$routes->setDefaultNamespace('App\Controllers');
-$routes->setDefaultController('Home');
-$routes->setDefaultMethod('index');
-$routes->setTranslateURIDashes(false);
-$routes->set404Override();
-// Auto routing is OFF: with it on, every public controller/service method was
-// callable by URL without login (e.g. GET /AccountController/transactionInitProccess/...
-// posted money into an account). All app URLs are defined explicitly below.
-$routes->setAutoRoute(false);
-
 /*
  * --------------------------------------------------------------------
  * Route Definitions
@@ -34,7 +19,8 @@ $routes->setAutoRoute(false);
 
 // We get a performance increase by specifying the default
 // route since we don't have to scan directories.
-$routes->get('', 'Home::index');
+// The site root must be '/' (CodeIgniter matches the root URI as '/', never '')
+$routes->get('/', 'Home::index');
 $routes->get('/login', 'Home::index');
 $routes->post('/user/login-validation', 'Home::loginValidation');
 $routes->get('/user/signup-page', 'Home::signup');
@@ -90,28 +76,22 @@ $routes->post('/js-request/payment-method/create', 'PaymentController::createPay
 $routes->post('/js-request/payment-method/update', 'PaymentController::updatePaymentMethod');
 $routes->post('/js-request/payment-method/delete', 'PaymentController::deletePaymentMethod');
 
+// Recurring (continuous) transactions
+$routes->get('/recurring/list', 'PaymentController::recurringPage');
+$routes->post('/js-request/recurring/create', 'PaymentController::createRecurring');
+$routes->post('/js-request/recurring/update', 'PaymentController::updateRecurring');
+
+// Bank rates (providers in app/Config/BankRates.php), account products, interest
+$routes->get('/bank-rates', 'BankController::ratesPage');
+$routes->post('/js-request/bank-rates/sync', 'BankController::syncRates');
+$routes->post('/js-request/account/bank-product', 'BankController::linkProduct');
+$routes->post('/js-request/account/transfer/quote', 'AccountController::internalTransferQuote');
+$routes->post('/js-request/account/interest/quote', 'BankController::interestQuoteRequest');
+$routes->post('/js-request/account/interest/post', 'BankController::interestPostRequest');
+
 // Reports
 $routes->get('/report/transactions/(:any)', 'ReportController::transactionReport/$1');
 
 // JS requests: Report
 $routes->post('/js-request/transaction/income-expense', 'ReportController::reportIncomeExpense');
 $routes->post('/js-request/transaction/purchase', 'ReportController::reportPurchaseReport');
-
-
-
-/*
- * --------------------------------------------------------------------
- * Additional Routing
- * --------------------------------------------------------------------
- *
- * There will often be times that you need additional routing and you
- * need it to be able to override any defaults in this file. Environment
- * based routes is one such time. require() additional route files here
- * to make that happen.
- *
- * You will have access to the $routes object within that file without
- * needing to reload it.
- */
-if (file_exists(APPPATH . 'Config/' . ENVIRONMENT . '/Routes.php')) {
-    require APPPATH . 'Config/' . ENVIRONMENT . '/Routes.php';
-}

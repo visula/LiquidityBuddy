@@ -16,11 +16,16 @@ namespace App\Controllers;
  *   6. allocates the payment against payables (`duepaid`) for due settlements,
  * all inside one DB transaction.
  *
- * Service methods are protected on purpose: auto routing is on in Routes.php,
- * so public controller methods are reachable by URL.
+ * Service methods are protected on purpose: they are never reachable by URL,
+ * only the controller actions listed in Routes.php are.
  */
 class PaymentService extends AccountService
 {
+    use Traits\BudgetRules;
+    use Traits\RecurringPayments;
+    use Traits\InterestPosting;
+    use Traits\InternalTransfers;
+
     protected $paymentMethodTypes = [
         'CASH'          => 'Cash',
         'DEBIT_CARD'    => 'Debit Card',
@@ -31,7 +36,7 @@ class PaymentService extends AccountService
         'WALLET'        => 'Mobile Wallet',
     ];
 
-    protected $paymentCategories = ['expense', 'purchase', 'travel', 'charity', 'income', 'transfer', 'settlement'];
+    protected $paymentCategories = ['expense', 'purchase', 'travel', 'charity', 'income', 'transfer', 'settlement', 'fee'];
 
     protected $settlementTypes = ['FULL', 'PARTIAL', 'INSTALLMENT'];
 
@@ -519,6 +524,15 @@ class PaymentService extends AccountService
         $reference = mb_substr(trim((string) ($p['reference'] ?? '')), 0, 50);
         $allocations = is_array($p['allocations'] ?? null) ? $p['allocations'] : [];
 
+        // Use case "Budget plan overboard": spending past a budget needs the user's confirmation
+        if ($direction === 'OUT' && ! filter_var($p['allow_over_budget'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $overBudget = $this->checkBudgetHeadroom($userID, $budgetID, $amount, $date);
+
+            if ($overBudget !== null) {
+                return $overBudget;
+            }
+        }
+
         return $this->runAtomic(function () use ($userID, $direction, $amount, $account, $method, $toAccount, $budgetID, $category, $settlement, $date, $description, $reference, $allocations, $p) {
             $db = $this->db();
             $now = time();
@@ -566,6 +580,7 @@ class PaymentService extends AccountService
                 'PaymentLinkType'        => isset($p['link_type']) ? mb_substr((string) $p['link_type'], 0, 20) : null,
                 'PaymentLinkSessionID'   => isset($p['link_id']) ? mb_substr((string) $p['link_id'], 0, 32) : null,
                 'PaymentReference'       => ($reference !== '') ? $reference : null,
+                'PaymentChannel'         => isset(\App\Libraries\BankRateSync::CHANNELS[$p['channel'] ?? '']) ? $p['channel'] : null,
             ];
 
             foreach ($optional as $key => $value) {
@@ -844,6 +859,7 @@ class PaymentService extends AccountService
             'reference'   => $r['reference'] ?? '',
             'date'        => $r['date'] ?? '',
             'allocations' => $allocations,
+            'allow_over_budget' => $r['allow_over_budget'] ?? false,
         ]);
     }
 
@@ -857,7 +873,7 @@ class PaymentService extends AccountService
         $builder = $this->db()->table('payment pay')
             ->select('pay.sessionid AS PaymentSessionID, pay.date AS PaymentDate, pay.direction AS PaymentDirection,
                       pay.category AS PaymentCategory, pay.settlementtype AS PaymentSettlementType, pay.amount AS PaymentAmount,
-                      pay.description AS PaymentDescription, pay.reference AS PaymentReference,
+                      pay.description AS PaymentDescription, pay.reference AS PaymentReference, pay.channel AS PaymentChannel,
                       a.sessionid AS AccountSessionID, a.name AS AccountName, ta.name AS ToAccountName,
                       pm.name AS PaymentMethodName, pm.type AS PaymentMethodType, pm.reference AS PaymentMethodReference', false)
             ->join('account a', 'a.sessionid = pay.accountsessionid')

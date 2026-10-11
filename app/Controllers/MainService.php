@@ -68,100 +68,80 @@ class MainService extends BlueprintService
 
         }
 
+        // Top menu, grouped. 'ID' must match the page's $data['CurrentID'] so the
+        // current page (and its dropdown) is highlighted. Icons: Bootstrap Icons names.
+        $firstName = trim((string) session()->get('user_fname'));
+        $lastName = trim((string) session()->get('user_lname'));
+        // Actions first, then the (scrolling) list of accounts
+        $accountItems = $subMenu === [] ? [] : array_merge([['Divider' => true], ['Header' => 'Your accounts']], $subMenu);
+
         $head = [
             'Title' => 'Liquidity Buddy',
             'Link' => '/account/list',
             'MainList' => [
                 'Home' => [
-                    'Title' => 'Home',
+                    'Title' => 'Dashboard',
+                    'Icon' => 'speedometer2',
                     'ID' => 'main-menu',
                     'Link' => '/account/list',
                 ],
-                'AddAccount' => [
-                    'Title' => 'Add New Account',
-                    'ID' => 'add-new-account',
-                    'Link' => '/account/add',
-                ],
                 'AccountList' => [
-                    'Title' => 'Account List',
+                    'Title' => 'Accounts',
+                    'Icon' => 'wallet2',
                     'ID' => 'account-list',
                     'Link' => '',
-                    'SubMenu' => $subMenu,
-                    'AccountMap' => '/account/info/' // this is not the whole url, it is just a base url for the account info page
+                    'Scroll' => true,
+                    'SubMenu' => array_merge([
+                        ['ID' => 'add-new-account', 'Title' => 'Add account', 'Icon' => 'plus-circle', 'Link' => '/account/add'],
+                        ['ID' => 'account-group', 'Title' => 'Account groups', 'Icon' => 'collection', 'Link' => '/account/group'],
+                        ['ID' => 'payment-methods', 'Title' => 'Payment methods', 'Icon' => 'credit-card', 'Link' => '/payment-method/list'],
+                    ], $accountItems),
                 ],
                 'Transactions' => [
                     'Title' => 'Transactions',
-                    'ID' => 'transaction-proccesss',
-                    'Link' => '/transaction/add',
+                    'Icon' => 'arrow-left-right',
+                    'ID' => 'transactions-menu',
+                    'Link' => '',
+                    'SubMenu' => [
+                        ['ID' => 'transaction-proccesss', 'Title' => 'New transaction', 'Icon' => 'plus-circle', 'Link' => '/transaction/add'],
+                        ['ID' => 'recurring-list', 'Title' => 'Recurring', 'Icon' => 'arrow-repeat', 'Link' => '/recurring/list'],
+                        ['ID' => 'payment-history', 'Title' => 'Payment history', 'Icon' => 'clock-history', 'Link' => '/payment/history'],
+                    ],
                 ],
                 'Budget' => [
-                    'Title' => 'Budget',
+                    'Title' => 'Budgets',
+                    'Icon' => 'pie-chart',
                     'ID' => 'budget-proccesss',
                     'Link' => '/budget/add',
                 ],
-                'PaymentMethods' => [
-                    'Title' => 'Payment Methods',
-                    'ID' => 'payment-methods',
-                    'Link' => '/payment-method/list',
+                'BankRates' => [
+                    'Title' => 'Bank Rates',
+                    'Icon' => 'bank',
+                    'ID' => 'bank-rates',
+                    'Link' => '/bank-rates',
                 ],
                 'Reports' => [
                     'Title' => 'Reports',
+                    'Icon' => 'bar-chart-line',
                     'ID' => 'report-list',
                     'Link' => '',
                     'SubMenu' => [
-                        [
-                            'ID' => 'income-report',
-                            'Title' => 'Income Report',
-                            'Link' => '/report/transactions/income'
-                        ],
-                        [
-                            'ID' => 'expense-report',
-                            'Title' => 'Expense Report',
-                            'Link' => '/report/transactions/expense'
-                        ],
-                        [
-                            'ID' => 'budget-report',
-                            'Title' => 'Budget Report',
-                            'Link' => '/report/transactions/budget'
-                        ],
-                        [
-                            'ID' => 'purchcase-report',
-                            'Title' => 'Purchase Report',
-                            'Link' => '/report/transactions/purchase'
-                        ],
-                        [
-                            'ID' => 'payment-history',
-                            'Title' => 'Payment History',
-                            'Link' => '/payment/history'
-                        ],
-                        // [
-                        //     'ID' => 'external-report',
-                        //     'Title' => 'External Report',
-                        //     'Link' => '/account/list'
-                        // ]
+                        ['ID' => 'income-report', 'Title' => 'Income', 'Icon' => 'graph-up-arrow', 'Link' => '/report/transactions/income'],
+                        ['ID' => 'expense-report', 'Title' => 'Expenses', 'Icon' => 'graph-down-arrow', 'Link' => '/report/transactions/expense'],
+                        ['ID' => 'budget-report', 'Title' => 'Budgets', 'Icon' => 'pie-chart', 'Link' => '/report/transactions/budget'],
+                        ['ID' => 'purchcase-report', 'Title' => 'Purchases', 'Icon' => 'bag', 'Link' => '/report/transactions/purchase'],
                     ],
-                    'AccountMap' => '/account/info/' // this is not the whole url, it is just a base url for the account info page
-                ],
-                'AccountGroup' => [
-                    'Title' => 'Account Group',
-                    'ID' => 'account-group',
-                    'Link' => '/account/group',
                 ],
             ],
             'Profile' => [
-                'Title' => 'Profile',
+                'Title' => ($firstName !== '') ? $firstName : 'Profile',
+                'FullName' => trim($firstName . ' ' . $lastName),
+                'Initials' => strtoupper(mb_substr($firstName !== '' ? $firstName : 'U', 0, 1) . mb_substr($lastName, 0, 1)),
                 'Link' => '',
                 'SubMenu' => [
-                    // 'UserName' => [
-                    //     'Title' => 'User Name',
-                    //     'Link' => '',
-                    // ],
-                    // 'MoreDetails' => [
-                    //     'Title' => 'More Details',
-                    //     'Link' => '/profile/info',
-                    // ],
                     'SignOut' => [
-                        'Title' => 'Sign Out',
+                        'Title' => 'Sign out',
+                        'Icon' => 'box-arrow-right',
                         'Link' => '/user/logout',
                     ]
                 ]

@@ -37,67 +37,71 @@ class Home extends MainService
         return view('User/login', $data);
     }
 
-    public function loginValidation()
+    /**
+     * Active user whose email or username matches $login (case-insensitive), or null.
+     * Usernames can't contain '@' and are unique, so one login can only ever match one user.
+     */
+    protected function findUserByLogin(string $login)
     {
-        $dateTime  = strtotime(date_format(new DateTime(),'Y-m-d H:i:s'));
-        $request_data = $this->handlePOSTBodyDataList();   
+        $login = trim($login);
 
-        $request_data['email'];
-        $request_data['password'];
-
-        $currentUserInfo = $this->getDatafromDB(['user'], 
-            ['UserEmail' => $request_data['email']], 
-            ['UserSessionID', 'UserPassword', 'UserEmail', 'GoogleID', 'UserFirstName', 'UserLastName', 'ProfilePic']);
-
-
-        if(isset($currentUserInfo['error_id'])){
-            // TODO:: Error logs
-            // TODO:: return to login page handle
-            return redirect()->to(base_url('/login'))->with('status',$currentUserInfo['error_message']);
+        if ($login === '') {
+            return null;
         }
 
-        if($currentUserInfo['GoogleID'] != ''){
-            // TODO:: Error logs
-            return redirect()->to(base_url('/login'))->with('status','This is a google link account, please use the google account to login in.');
-        }
+        $row = \Config\Database::connect()->table('user')
+            ->select('sessionid AS UserSessionID, password AS UserPassword, email AS UserEmail, username AS Username,
+                      google_id AS GoogleID, first_name AS UserFirstName, last_name AS UserLastName, profile_pic AS ProfilePic', false)
+            ->groupStart()->where('email', $login)->orWhere('username', $login)->groupEnd()
+            ->where('status', 'A')
+            ->get()->getRowArray();
 
-        
+        return empty($row) ? null : $row;
+    }
 
-        if($this->encryptLogic($request_data['password']) != $currentUserInfo['UserPassword']){
-            // TODO:: return to login page handle
-            return redirect()->to(base_url('/login'))->with('status','Password incorrect');
-        }
+    /** Sets the logged in session (and the login history row) for $user. */
+    protected function startUserSession(array $user)
+    {
+        $jwtEncription = $this->generateJWT(['UserSessionID' => $user['UserSessionID']]);
 
-
-        $jwtData = [
-            'UserSessionID' => 'UserSessionID'
-            ];
-        $jwtEncription = $this->generateJWT($jwtData);
-                
-        $insertUser = $this->insertDatatoDB('user_history', [
-                'UserSessionID' => $currentUserInfo['UserSessionID'], 
-                'UserHistoryStartedDateTime' => $dateTime, 
+        $insertHistory = $this->insertDatatoDB('user_history', [
+                'UserSessionID' => $user['UserSessionID'],
+                'UserHistoryStartedDateTime' => time(),
                 'UserHistoryJWTToken' => $jwtEncription
             ]);
 
-        if(isset($insertUser['error_id'])){
-            // TODO:: DB access fail log need
-            // TODO:: Send to common Error
+        if(isset($insertHistory['error_id'])){
+            log_message('error', 'Login history not saved: {message}', ['message' => $insertHistory['error_message'] ?? '']);
         }
 
-        $data = [
-            'user_fname' => $currentUserInfo['UserFirstName'],
-            'user_lname' => $currentUserInfo['UserLastName'],
-            'profile_pic' => $currentUserInfo['ProfilePic'],
-            'user_id'     => $currentUserInfo['UserSessionID'],
+        session()->regenerate();
+        session()->set([
+            'user_fname'  => $user['UserFirstName'],
+            'user_lname'  => $user['UserLastName'],
+            'profile_pic' => $user['ProfilePic'],
+            'user_id'     => $user['UserSessionID'],
             'jwt_encrypt' => $jwtEncription,
-            'is_login' => true
-            ];
+            'is_login'    => true
+        ]);
+    }
 
-        // Store user data in session
-        session()->set($data);
+    /** POST /user/login-validation  (field "email" takes an email or a username) */
+    public function loginValidation()
+    {
+        $request_data = $this->handlePOSTBodyDataList();
+        $user = $this->findUserByLogin((string) ($request_data['email'] ?? ''));
 
-        // Redirect to dashboard or any page
+        if($user !== null && !empty($user['GoogleID'])){
+            return redirect()->to(base_url('/login'))->withInput()->with('status','This is a google link account, please use the google account to login in.');
+        }
+
+        // Same message for an unknown login and a wrong password, so logins can't be probed
+        if($user === null || $this->encryptLogic((string) ($request_data['password'] ?? '')) !== $user['UserPassword']){
+            return redirect()->to(base_url('/login'))->withInput()->with('status', 'Incorrect email/username or password.');
+        }
+
+        $this->startUserSession($user);
+
         return redirect()->to(base_url());
     }
 
@@ -137,114 +141,112 @@ class Home extends MainService
         return view('User/signup',$data);
     }
 
+    /**
+     * POST /user/signup-validation
+     * Needs first and last name, a password (8+ chars, repeated) and a username,
+     * an email or both. Creates the user with a Default account group and budget,
+     * then logs them in.
+     */
     public function signupValidation()
     {
-        $dateTime  = strtotime(date_format(new DateTime(),'Y-m-d H:i:s'));
-        $request_data = $this->handlePOSTBodyDataList();   
+        $request_data = $this->handlePOSTBodyDataList();
+        $back = function (string $message) {
+            return redirect()->to(base_url('/user/signup-page'))->withInput()->with('status', $message);
+        };
 
-        $request_data['email'];
-        $request_data['fname'];
-        $request_data['lname'];
-        $request_data['password'];
-        $request_data['repassword'];
+        $fname = trim((string) ($request_data['fname'] ?? ''));
+        $lname = trim((string) ($request_data['lname'] ?? ''));
+        $username = trim((string) ($request_data['username'] ?? ''));
+        $email = trim((string) ($request_data['email'] ?? ''));
+        $password = (string) ($request_data['password'] ?? '');
 
-        $currentUserInfo = $this->getDatafromDB(['user'], 
-            ['UserEmail' => $request_data['email']], 
-            ['UserSessionID', 'UserPassword', 'UserEmail', 'GoogleID', 'UserFirstName', 'UserLastName', 'ProfilePic']);
-
-
-        if(!isset($currentUserInfo['error_id']) || $currentUserInfo['error_id'] != '004'){
-            if(!isset($currentUserInfo['error_id']) && $currentUserInfo['GoogleID'] != ''){
-                // TODO:: Error logs
-                return redirect()->to(base_url('login'))->with('status','This is a google link account, please use the google account to login in.');
-            }
-            // TODO:: Error logs
-            return redirect()->to(base_url('login'))->with('status','Already have an account, please login below with your account.');
+        if($fname === '' || $lname === '' || mb_strlen($fname) > 50 || mb_strlen($lname) > 50){
+            return $back('Please enter your first and last name.');
         }
 
-        if($request_data['password'] != $request_data['repassword']){
-            // TODO:: return to login page handle
-            return redirect()->to(base_url('/user/signup-page'))->with('status','Password mismatch');
+        if($username === '' && $email === ''){
+            return $back('Please enter a username, an email or both.');
+        }
+
+        if($username !== '' && !preg_match('/^[A-Za-z0-9._-]{3,50}$/', $username)){
+            return $back('A username needs 3-50 letters, digits, dots, dashes or underscores.');
+        }
+
+        if($email !== '' && (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 50)){
+            return $back('Please enter a valid email address.');
+        }
+
+        if(isset($this->passwordFormatHandler($password)['error_id'])){
+            return $back('The password needs at least 8 characters.');
+        }
+
+        if($password !== (string) ($request_data['repassword'] ?? '')){
+            return $back('The two passwords do not match.');
+        }
+
+        foreach (array_filter([$username, $email]) as $login) {
+            $existing = $this->findUserByLogin($login);
+
+            if($existing !== null){
+                return redirect()->to(base_url('login'))->withInput()->with('status', !empty($existing['GoogleID'])
+                    ? 'This is a google link account, please use the google account to login in.'
+                    : 'That username or email already has an account. Please log in.');
+            }
         }
 
         $userData = [
-            'UserEmail' => $request_data['email'],
-            'UserFirstName' => $request_data['fname'],
-            'UserLastName' => $request_data['lname'],
-            'UserPassword' => $this->encryptLogic($request_data['password'])
+            'UserFirstName' => $fname,
+            'UserLastName'  => $lname,
+            'UserPassword'  => $this->encryptLogic($password),
+            'UserCreatedAt' => time(),
+            'UserUpdatedAt' => time(),
         ];
 
-        $insertUser = $this->insertDatatoDB('user', $userData);
-
-        if(isset($insertUser['error_id'])){
-            // TODO:: DB access fail log need
-            // TODO:: Send to common Error
+        if($username !== ''){
+            $userData['Username'] = $username;
         }
 
-        $user = $this->getDatafromDB(
-                ['user'],
-                ['UserEmail' => $userData['UserEmail']],
-                ['UserSessionID', 'UserEmail', 'GoogleID', 'UserFirstName', 'UserLastName', 'ProfilePic']
-            );
+        if($email !== ''){
+            $userData['UserEmail'] = $email;
+        }
+
+        $user = $this->runAtomic(function () use ($userData, $username, $email) {
+            $insertUser = $this->insertDatatoDB('user', $userData);
+
+            if(isset($insertUser['error_id'])){
+                return $insertUser;
+            }
+
+            $user = $this->findUserByLogin($username !== '' ? $username : $email);
+
+            if($user === null){
+                return ['error_id' => '0005', 'error_message' => 'The new user could not be read back.'];
+            }
+
+            // Every user starts with a Default account group and the Default (unplanned) budget
+            $defaults = [
+                ['accountgroup', ['UserSessionID' => $user['UserSessionID'], 'AccountGroupName' => 'Default']],
+                ['budget', ['UserSessionID' => $user['UserSessionID'], 'BudgetName' => 'Default', 'BudgetAmount' => 0, 'BudgetPeriodic' => 'M']],
+            ];
+
+            foreach ($defaults as [$table, $row]) {
+                $response = $this->insertDatatoDB($table, $row);
+
+                if(isset($response['error_id'])){
+                    return $response;
+                }
+            }
+
+            return $user;
+        });
 
         if(isset($user['error_id'])){
-            // TODO:: DB access fail log need
-            // TODO:: Send to common Error
+            log_message('error', 'Signup failed: {message}', ['message' => $user['error_message'] ?? '']);
+            return $back('The account could not be created, please try again.');
         }
 
-         $jwtData = [
-            'UserSessionID' => $user['UserSessionID']
-            ];
-        $jwtEncription = $this->generateJWT($jwtData);
-                
-        $insertUser = $this->insertDatatoDB('user_history', [
-                'UserSessionID' => $user['UserSessionID'], 
-                'UserHistoryStartedDateTime' => $dateTime, 
-                'UserHistoryJWTToken' => $jwtEncription
-            ]);
+        $this->startUserSession($user);
 
-        if(isset($insertUser['error_id'])){
-            // TODO:: DB access fail log need
-            // TODO:: Send to common Error
-        }
-
-        $response = $this->insertDatatoDB('accountgroup', 
-                ['UserSessionID' => $user['UserSessionID'], 'AccountGroupName' => 'Default']);
-
-        if(isset($response['error_id'])){
-            // TODO:: DB access fail log need
-            // TODO:: Send to common Error
-        }
-
-        $response = $this->insertDatatoDB('budget', 
-                ['UserSessionID' => $user['UserSessionID'], 'BudgetName' => 'Default', 'BudgetAmount' => 0, 'BudgetPeriodic' => 'M']);
-
-        if(isset($response['error_id'])){
-            // TODO:: DB access fail log need
-            // TODO:: Send to common Error
-        }
-
-        // $response = $this->insertDatatoDB('shop', 
-        //         ['UserSessionID' => $user['UserSessionID'], 'ShopName' => 'Default']);
-
-        // if(isset($response['error_id'])){
-        //     // TODO:: DB access fail log need
-        //     // TODO:: Send to common Error
-        // }
-
-        $data = [
-            'user_fname' => $user['UserFirstName'],
-            'user_lname' => $user['UserLastName'],
-            'profile_pic' => $user['ProfilePic'],
-            'user_id'     => $user['UserSessionID'],
-            'jwt_encrypt' => $jwtEncription,
-            'is_login' => true
-            ];
-
-        // Store user data in session
-        session()->set($data);
-
-        // Redirect to dashboard or any page
         return redirect()->to(base_url());
     }
 

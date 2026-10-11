@@ -25,18 +25,13 @@ if (!window.__budget_initialized__) {
                     return;
                 }
 
-                $.ajax({
-                    type: "POST",
-                    url: base_url + "/js-request/budget/create",
-                    data: {
-                        budgetName:$('#budget-name').val(),
-                        budgetPlan:$('#budget-plan').val(),
-                        budgetAmount:$('#budget-amount').val(),
-                    },
-                    success: function (data) {
-                        window.location.reload();
-                    }
-                });                
+                LB.post('js-request/budget/create', {
+                    budgetName: $('#budget-name').val(),
+                    budgetPlan: $('#budget-plan').val(),
+                    budgetAmount: $('#budget-amount').val()
+                }, function () {
+                    window.location.reload();
+                }, '.error-message', $(this));
         });
 
         $(document).on('click', '.update-budget-btn', function () {
@@ -44,7 +39,7 @@ if (!window.__budget_initialized__) {
             $('#update-budget-btn').data('session-id',session_id);
 
             $('#budget-name').val($('#'+session_id+' .budget-name').html());
-            $('#budget-amount').val($('#'+session_id+' .budget-amount').html().replace('.00','').replace(/[^0-9]/g, ''));
+            $('#budget-amount').val($('#'+session_id+' .budget-amount').text().replace(/[^0-9.]/g, ''));
             $('#budget-plan').val($('#'+session_id+' .budget-period').data('budget-period'));
 
             $('#create-budget-btn').addClass('d-none');
@@ -63,19 +58,14 @@ if (!window.__budget_initialized__) {
 
             session_id = $(this).data('session-id');
 
-            $.ajax({
-                type: "POST",
-                url: base_url + "/js-request/budget/update",
-                data: {
-                    budget_id:session_id,
-                    budget_name:$('#budget-name').val(),
-                    budget_plan:$('#budget-plan').val(),
-                    budget_amount:$('#budget-amount').val(),
-                },
-                success: function (data) {
-                    window.location.reload();
-                }
-            });                
+            LB.post('js-request/budget/update', {
+                budget_id: session_id,
+                budget_name: $('#budget-name').val(),
+                budget_plan: $('#budget-plan').val(),
+                budget_amount: $('#budget-amount').val()
+            }, function () {
+                window.location.reload();
+            }, '.error-message', $(this));
         });
 
         $(document).on('click', '.delete-budget-btn', function () {
