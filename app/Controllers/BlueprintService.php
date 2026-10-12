@@ -17,6 +17,7 @@ class BlueprintService extends BaseController
     use Traits\DB\PaymentTraits;
     use Traits\DB\PurchaseTraits;
     use Traits\DB\TransactionTraits;
+    use Traits\DB\PlanTraits;
 
     ################# DB Direct Data Accessing Methodology #################
     public function getDatafromDB($tables, $conditions, $feilds = NULL, $organizer = NULL)
