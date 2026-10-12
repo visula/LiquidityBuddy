@@ -3,6 +3,7 @@
     $outstandingDues = $outstandingDues ?? [];
     $payables = array_values(array_filter($outstandingDues, function ($due) { return $due['Direction'] === 'OUT'; }));
     $receivables = array_values(array_filter($outstandingDues, function ($due) { return $due['Direction'] === 'IN'; }));
+    $transfers = array_values(array_filter($outstandingDues, function ($due) { return $due['Direction'] === 'TRANSFER'; }));
 ?>
 <div class="mb-3 transaction-type-list d-none" id="dued">
     <div class="form">
@@ -16,6 +17,10 @@
                     <input type="radio" class="form-check-input" id="dued-direction-in" name="dued-direction" value="IN">
                     <label class="form-check-label" for="dued-direction-in">Receivables (<?= count($receivables) ?>)</label>
                 </div>
+                <div class="form-check mr-3">
+                    <input type="radio" class="form-check-input" id="dued-direction-transfer" name="dued-direction" value="TRANSFER">
+                    <label class="form-check-label" for="dued-direction-transfer">Transfers (<?= count($transfers) ?>)</label>
+                </div>
             </div>
             <div class="col-12 mb-3">
                 <table class="table table-striped table-sm mb-1" id="dued-table">
@@ -24,7 +29,7 @@
                             <th><input class="form-check-input" type="checkbox" id="dued-select-all" title="Select all"></th>
                             <th>Due Date</th>
                             <th>For</th>
-                            <th class="text-center">Installment</th>
+                            <th class="text-center">Installment / month</th>
                             <th class="text-end">Due</th>
                             <th class="text-end">Paid</th>
                             <th class="text-end">Outstanding</th>
@@ -35,7 +40,10 @@
                             <tr class="dued-empty"><td colspan="7" class="text-center text-muted">Nothing outstanding</td></tr>
                         <?php } ?>
                         <?php foreach ($outstandingDues as $due) { ?>
-                            <tr class="dued-row <?= $due['Direction'] === 'IN' ? 'd-none' : '' ?>" data-direction="<?= esc($due['Direction'], 'attr') ?>">
+                            <tr class="dued-row <?= $due['Direction'] !== 'OUT' ? 'd-none' : '' ?>" data-direction="<?= esc($due['Direction'], 'attr') ?>"
+                                data-account="<?= esc((string) ($due['PlanItemAccountSessionID'] ?? ''), 'attr') ?>"
+                                data-method="<?= esc((string) ($due['PlanItemMethodSessionID'] ?? ''), 'attr') ?>"
+                                data-budget="<?= esc((string) ($due['PlanItemBudgetSessionID'] ?? ''), 'attr') ?>">
                                 <td>
                                     <input class="form-check-input payment-check" type="checkbox"
                                            value="<?= esc($due['PayableSessionID'], 'attr') ?>"
@@ -47,8 +55,20 @@
                                         <span class="badge <?= $due['DueState'] === 'Overdue' ? 'bg-danger' : 'bg-warning text-dark' ?>"><?= esc($due['DueState']) ?></span>
                                     <?php } ?>
                                 </td>
-                                <td><?= esc($due['PaymentPlanDescription']) ?> <small class="text-muted">(<?= esc(ucfirst($due['PaymentPlanLink'])) ?>)</small></td>
-                                <td class="text-center"><?= (int) $due['InstallmentNo'] ?> / <?= (int) $due['PaymentPlanPeriod'] ?></td>
+                                <td>
+                                    <?= esc($due['PaymentPlanDescription']) ?>
+                                    <small class="text-muted">(<?= esc($due['PaymentPlanLink'] === 'planitem' ? 'Monthly plan' : ucfirst($due['PaymentPlanLink'])) ?>)</small>
+                                    <?php if ($due['Direction'] === 'TRANSFER') { ?>
+                                        <br><small class="text-muted">&rarr; <?= esc($due['ToAccountName'] ?? 'no account set') ?></small>
+                                    <?php } ?>
+                                </td>
+                                <td class="text-center">
+                                    <?php if ($due['PaymentPlanLink'] === 'planitem') { ?>
+                                        <?= esc(date('M Y', strtotime($due['PayableDueDate']))) ?>
+                                    <?php } else { ?>
+                                        <?= (int) $due['InstallmentNo'] ?> / <?= (int) $due['PaymentPlanPeriod'] ?>
+                                    <?php } ?>
+                                </td>
                                 <td class="text-end"><?= number_format($due['PayableDueAmount'], 2) ?></td>
                                 <td class="text-end"><?= number_format($due['PayablePaidAmount'], 2) ?></td>
                                 <td class="text-end font-weight-600"><?= number_format($due['PayableOutstanding'], 2) ?></td>

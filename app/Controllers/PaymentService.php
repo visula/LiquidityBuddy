@@ -656,7 +656,8 @@ class PaymentService extends AccountService
 
         $db = $this->db();
         $payable = $db->query(
-            'SELECT p.sessionid, p.paymentplansessionid, p.dueamount, p.paidamount, p.status, pp.paymentplanlink
+            'SELECT p.sessionid, p.paymentplansessionid, p.dueamount, p.paidamount, p.status, pp.paymentplanlink,
+                    COALESCE(pp.direction, IF(pp.paymentplanlink = \'income\', \'IN\', \'OUT\')) AS direction
                FROM payable p JOIN paymentplan pp ON pp.sessionid = p.paymentplansessionid
               WHERE p.sessionid = ? AND pp.usersessionid = ? FOR UPDATE',
             [$payableID, $userID]
@@ -666,7 +667,7 @@ class PaymentService extends AccountService
             return $this->paymentError('0039', 'Settlement', 'A selected due was not found.');
         }
 
-        $expected = ($payable['paymentplanlink'] === 'income') ? 'IN' : 'OUT';
+        $expected = $payable['direction'];
 
         if ($expected !== $direction) {
             return $this->paymentError('0040', 'Settlement', 'Receivables and payables must be settled separately.');
@@ -734,9 +735,15 @@ class PaymentService extends AccountService
                        p.status AS PayableStatus, pp.sessionid AS PaymentPlanSessionID, pp.paymentplanlink AS PaymentPlanLink,
                        pp.paymentplan AS PaymentPlan, pp.period AS PaymentPlanPeriod,
                        COALESCE(pp.description, pu.description, pp.paymentplanlink) AS PaymentPlanDescription,
+                       COALESCE(pp.direction, IF(pp.paymentplanlink = \'income\', \'IN\', \'OUT\')) AS PaymentPlanDirection,
+                       pi.sessionid AS PlanItemSessionID, pi.accountsessionid AS PlanItemAccountSessionID,
+                       pi.paymentmethodsessionid AS PlanItemMethodSessionID, pi.budgetsessionid AS PlanItemBudgetSessionID,
+                       pi.toaccountsessionid AS ToAccountSessionID, ta.name AS ToAccountName,
                        seq.InstallmentNo
                   FROM payable p
                   JOIN paymentplan pp ON pp.sessionid = p.paymentplansessionid
+             LEFT JOIN planitem pi ON pp.paymentplanlink = \'planitem\' AND pi.sessionid = pp.paymentplansessionid
+             LEFT JOIN account ta ON ta.sessionid = pi.toaccountsessionid
                   JOIN (SELECT sessionid, ROW_NUMBER() OVER (PARTITION BY paymentplansessionid ORDER BY duedate, id) AS InstallmentNo
                           FROM payable) seq ON seq.sessionid = p.sessionid
              LEFT JOIN purchase pu ON pp.paymentplanlink = \'purchase\' AND pu.sessionid = pp.paymentplansessionid
@@ -761,7 +768,7 @@ class PaymentService extends AccountService
         $today = date('Y-m-d');
 
         foreach ($rows as $key => $row) {
-            $rows[$key]['Direction'] = ($row['PaymentPlanLink'] === 'income') ? 'IN' : 'OUT';
+            $rows[$key]['Direction'] = $row['PaymentPlanDirection'];
             $rows[$key]['DueState'] = ($row['PayableDueDate'] < $today) ? 'Overdue' : (($row['PayableDueDate'] === $today) ? 'Due today' : 'Upcoming');
         }
 
@@ -803,10 +810,26 @@ class PaymentService extends AccountService
         $directions = array_unique(array_column($dues, 'Direction'));
 
         if (count($directions) > 1) {
-            return $this->paymentError('0040', 'Settlement', 'Receivables and payables must be settled separately.');
+            return $this->paymentError('0040', 'Settlement', 'Receivables, payables and transfers must be settled separately.');
         }
 
-        $direction = $directions[0];
+        $direction = reset($directions);
+        $toAccount = null;
+
+        // A transfer due moves money to the plan item's target account (e.g. a card pay-down)
+        if ($direction === 'TRANSFER') {
+            $targets = array_unique(array_map('strval', array_column($dues, 'ToAccountSessionID')));
+
+            if (count($targets) > 1) {
+                return $this->paymentError('0074', 'Settlement', 'The selected transfers go to different accounts; settle them separately.');
+            }
+
+            $toAccount = $targets[0] ?? '';
+
+            if ($toAccount === '') {
+                return $this->paymentError('0075', 'Settlement', 'This transfer has no account to transfer to. Set one on the plan item.');
+            }
+        }
         $totalOutstanding = round(array_sum(array_column($dues, 'PayableOutstanding')), 2);
         $mode = strtolower((string) ($r['mode'] ?? 'full'));
 
@@ -842,16 +865,19 @@ class PaymentService extends AccountService
 
         if ($description === '') {
             $what = (count($plans) === 1) ? $dues[0]['PaymentPlanDescription'] : count($dues) . ' dues';
-            $description = (($direction === 'IN') ? 'Collection: ' : 'Settlement: ') . $what;
+            $description = ['IN' => 'Collection: ', 'TRANSFER' => 'Transfer: '][$direction] ?? 'Settlement: ';
+            $description .= $what;
         }
 
         return $this->recordPayment($userID, [
             'direction'   => $direction,
             'account'     => $r['account'] ?? '',
             'method'      => $r['method'] ?? '',
+            'to_account'  => $toAccount,
             'budget'      => $r['budget'] ?? '',
             'amount'      => $amount,
-            'category'    => 'settlement',
+            // a transfer is a move between own accounts: budgets and envelopes skip it like any transfer
+            'category'    => ($direction === 'TRANSFER') ? 'transfer' : 'settlement',
             'settlement'  => ($amount >= $totalOutstanding) ? 'FULL' : 'PARTIAL',
             'link_type'   => (count($plans) === 1) ? 'paymentplan' : 'payable',
             'link_id'     => (count($plans) === 1) ? $plans[0] : null,
