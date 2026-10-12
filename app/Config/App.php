@@ -133,8 +133,8 @@ class App extends BaseConfig
      * @see https://www.php.net/manual/en/timezones.php for list of timezones
      *      supported by PHP.
      */
-    // Kept from the CodeIgniter 4.1.9 config so dates don't shift; Sri Lanka would be 'Asia/Colombo'
-    public string $appTimezone = 'America/Chicago';
+    // Sri Lankan time: "today", due and overdue dates follow it (decision 11e, monthly plan)
+    public string $appTimezone = 'Asia/Colombo';
 
     /**
      * --------------------------------------------------------------------------

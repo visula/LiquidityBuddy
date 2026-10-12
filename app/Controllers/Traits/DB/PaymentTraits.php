@@ -36,7 +36,8 @@ trait PaymentTraits{
             'PaymentPlanUpdatedDateTime'    => 'updateddatetime',
             'PaymentPlanStatus'             => 'status',
             'PaymentPlanDescription'        => 'description',
-            'PaymentPlanAmount'             => 'amount'
+            'PaymentPlanAmount'             => 'amount',
+            'PaymentPlanDirection'          => 'direction'
         ];
         
         $this->foreignKeys = [
