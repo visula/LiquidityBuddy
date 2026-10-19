@@ -167,7 +167,7 @@ class TransactionController extends PaymentService
             'allow_all_accounts' => true,
             'edit_mode' => true
         ];
-        $data['outstandingDues'] = $this->outstandingPayables($this->userAccess());
+        $data['outstandingDues'] = $this->duedTabPayables($this->userAccess());
         $data['paymentPlan'] = $this->periodic;
         $data['paymentMethodInfo'] = $this->paymentMethodList($this->userAccess());
         $data['accountMeta'] = $this->accountTypeMap($this->userAccess());

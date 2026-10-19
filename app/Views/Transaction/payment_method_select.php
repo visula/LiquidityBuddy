@@ -16,6 +16,7 @@ $showReference = $showReference ?? true;
         <select class="form-select payment-method-list" name="payment-method-list" id="payment-method-list">
             <option class="no-method-option" value="">Account balance (no method)</option>
             <?php foreach (($paymentMethodInfo ?? []) as $method) { ?>
+                <?php if (($method['PaymentMethodShowInDropdown'] ?? 'Y') === 'N') { continue; } // e.g. the account has no card ?>
                 <option value="<?= esc($method['PaymentMethodSessionID'], 'attr') ?>"
                         data-account="<?= esc($method['AccountSessionID'], 'attr') ?>"
                         data-type="<?= esc($method['PaymentMethodType'], 'attr') ?>"

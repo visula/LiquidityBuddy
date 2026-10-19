@@ -242,6 +242,11 @@ trait InternalTransfers
                 'description' => $description,
                 'reference'   => $r['reference'] ?? '',
                 'date'        => $date,
+                // Set when a plan or payable transfer settles, so its dues are marked paid
+                'settlement'  => $r['settlement'] ?? 'FULL',
+                'link_type'   => $r['link_type'] ?? null,
+                'link_id'     => $r['link_id'] ?? null,
+                'allocations' => $r['allocations'] ?? [],
             ]);
 
             if (isset($transfer['error_id'])) {

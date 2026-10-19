@@ -68,7 +68,7 @@ class AccountService extends MainService
     public function activeAccountListAccessModule($userID, $accountID = '')
     {
         $condtionList = ['UserSessionID' => $userID, 'AccountStatus' => 'A'];
-        $feildList = ['AccountSessionID','AccountName','AccountGroupSessionID','AccountGroupName','AccountCurrentBalance'];
+        $feildList = ['AccountSessionID','AccountName','AccountGroupSessionID','AccountGroupName','AccountCurrentBalance','AccountNumber'];
         $organizerList = [];
 
         if($accountID != ''){
@@ -371,6 +371,72 @@ class AccountService extends MainService
         }
 
         return $newBudget;
+    }
+
+    /**
+     * Set an account's current balance directly. This is a correction, not a transaction:
+     * it doesn't post to the payment ledger. Negative is allowed only for a credit card (owed).
+     */
+    public function accountBalanceUpdateProccess($userID, $accountID, $amountInput)
+    {
+        $response = $this->activeAccountListAccessModule($userID, $accountID);
+
+        if(isset($response['error_id']))
+        {
+            return $response;
+        }
+
+        $amount = $this->toAmount($amountInput);
+        $accountType = (string) $this->db()->table('account')->select('accounttype')
+            ->where(['sessionid' => $accountID, 'usersessionid' => $userID])->get()->getRow('accounttype');
+
+        if($amount === null || abs($amount) > 9999999999.99 || ($amount < 0 && $accountType !== 'CREDIT_CARD'))
+        {
+            return $this->paymentError('0069', 'Account Balance', 'Enter a valid balance. Only a credit card can have a negative balance.');
+        }
+
+        if(round($amount, 2) === round((float) $response['AccountCurrentBalance'], 2))
+        {
+            return $response;
+        }
+
+        return $this->runAtomic(function () use ($userID, $accountID, $amount) {
+            $this->db()->query('SELECT sessionid FROM account WHERE sessionid = ? AND usersessionid = ? FOR UPDATE', [$accountID, $userID]);
+
+            $this->db()->table('account')
+                ->set(['currentbalance' => number_format($amount, 2, '.', ''), 'updateddatetime' => time()])
+                ->where(['sessionid' => $accountID, 'usersessionid' => $userID])
+                ->update();
+
+            return ['success' => true, 'data' => ['AccountCurrentBalance' => round($amount, 2)]];
+        });
+    }
+
+    /** Optional bank account number. Cash has none, so it's cleared for a cash account. */
+    public function accountNumberUpdateProccess($userID, $accountID, $numberInput)
+    {
+        $response = $this->activeAccountListAccessModule($userID, $accountID);
+
+        if(isset($response['error_id']))
+        {
+            return $response;
+        }
+
+        $row = $this->db()->table('account')->select('accounttype, accountnumber')
+            ->where(['sessionid' => $accountID, 'usersessionid' => $userID])->get()->getRowArray();
+        $number = ($row['accounttype'] ?? '') === 'CASH' ? '' : mb_substr(trim(strip_tags((string) $numberInput)), 0, 40);
+
+        if($number === (string) ($row['accountnumber'] ?? ''))
+        {
+            return $response;
+        }
+
+        $this->db()->table('account')
+            ->set(['accountnumber' => $number !== '' ? $number : null, 'updateddatetime' => time()])
+            ->where(['sessionid' => $accountID, 'usersessionid' => $userID])
+            ->update();
+
+        return ['success' => true];
     }
 
     public function accountUpdateProccess($userID, $accountID, $name = '', $groupID = '')

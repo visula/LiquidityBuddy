@@ -76,7 +76,8 @@
                         <?php } ?>
                     </tbody>
                 </table>
-                <small class="text-muted">Partial amounts are applied to the oldest selected due first.</small>
+                <small class="text-muted">Partial amounts are applied to the oldest selected due first.
+                    Monthly plan dues are listed up to the end of next month; later months are in the <a href="<?= base_url('/plan/' . date('Y')) ?>">Monthly Plan</a>.</small>
             </div>
             <div class="col-12 my-2 d-flex">
                 <div class="form-check mr-3">

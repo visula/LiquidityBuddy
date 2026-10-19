@@ -50,6 +50,7 @@ trait TransactionTraits{
             'AccountSessionID'          => 'sessionid',
             'AccountName'               => 'name',
             'AccountCurrentBalance'     => 'currentbalance',
+            'AccountNumber'             => 'accountnumber',
             'AccountCreatedDateTime'    => 'createddatetime',
             'AccountUpdatedDateTime'    => 'updateddatetime',
             'AccountStatus'             => 'status'

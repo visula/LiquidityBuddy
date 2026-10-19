@@ -52,6 +52,7 @@
                                                    data-type="<?= esc($method['PaymentMethodType'], 'attr') ?>"
                                                    data-reference="<?= esc((string) $method['PaymentMethodReference'], 'attr') ?>"
                                                    data-credit-limit="<?= esc($method['PaymentMethodCreditLimit'], 'attr') ?>"
+                                                   data-show="<?= esc($method['PaymentMethodShowInDropdown'] ?? 'Y', 'attr') ?>"
                                                    data-default="<?= esc($method['PaymentMethodIsDefault'], 'attr') ?>">Edit</a>
                                                 <a class="btn btn-sm btn-outline-danger delete-method-btn" data-id="<?= esc($method['PaymentMethodSessionID'], 'attr') ?>" data-name="<?= esc($method['PaymentMethodLabel'], 'attr') ?>">Remove</a>
                                             </td>
@@ -95,6 +96,10 @@
                         <div class="form-floating mb-3 d-none" id="method-credit-limit-group">
                             <input type="text" class="form-control" id="method-credit-limit" placeholder="Credit limit" value="0.00">
                             <label for="method-credit-limit">Credit limit</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="method-show" checked>
+                            <label class="form-check-label" for="method-show">Show in payment and plan dropdowns (turn off if this account has no card)</label>
                         </div>
                         <div class="form-check mb-3">
                             <input class="form-check-input" type="checkbox" id="method-default">

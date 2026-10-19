@@ -192,7 +192,38 @@ To start the demo over, run option A again.
 
 ---
 
-## 8. Troubleshooting
+## 8. Monthly payment plan
+
+The **Monthly Plan** menu replaces the *Planned Total Expenses* spreadsheet. Full notes:
+[`docs/MONTHLY_PLAN.md`](docs/MONTHLY_PLAN.md).
+
+**Load the 2026 plan from the spreadsheet seed** (after the migrations in step 5):
+
+```bash
+# 1. Dry run: prints the report, saves nothing
+php spark plan:import DBBackup/Seeds/planned_expenses_2026.json --user=svisula@gmail.com --from=2026-10 --dry-run
+# 2. Real run (--create-missing-accounts adds the NDB / HSBC card accounts)
+php spark plan:import DBBackup/Seeds/planned_expenses_2026.json --user=svisula@gmail.com --from=2026-10 --create-missing-accounts
+# 3. Check it against the sheet: every month and every invariant should say PASS
+php spark plan:verify --user=svisula@gmail.com --year=2026
+```
+
+Running the import again creates nothing new. Months before `--from` are history (no dues).
+
+| # | Where | Do this | Expect |
+|---|-------|---------|--------|
+| 1 | **Monthly Plan → Year grid** | Open it. | Income first, then each category. The October footer shows planned income **391,504.64**, outflow **366,904.61**, net **24,600.03**. Jan–Sep are grey (history). |
+| 2 | same | Click Hutch's October amount, enter `2500`, tick *Apply to the following months*, **Save**. | October onwards shows 2,500.00. Settled months are never changed. |
+| 3 | same | Scroll down. | The card projection shows October Sampath 6,035.00, ComBank 8,333.33 and NDB 14,200.00. The allocation banner says the categories add up to 99.75%. |
+| 4 | **Monthly Plan → This month** | Tick Hutch under *Payables*, then **Settle Selected**. | The account and method are filled in from the item. Hutch shows *Settled* (tick *Show settled and skipped*). |
+| 5 | **Monthly Plan → Plan items** | Add `Gym`, 4000, due day 5, from Sampath: Standby. | 13 months are planned (this month + 12). Each has a due. |
+| 6 | same | **End** Gym on the last day of next month. | The later months are skipped and their dues cancelled. **Delete** works while nothing on it is paid. |
+
+Credit cards with a 0 limit can't pay anything: set a limit under **Payment methods**
+before settling card dues. Repeating items are kept 12 months ahead whenever a plan
+page opens; `php spark plan:roll` does the same from a scheduler.
+
+## 9. Troubleshooting
 
 | Symptom | Cause / fix |
 |---------|-------------|
@@ -204,11 +235,14 @@ To start the demo over, run option A again.
 | Accounts missing from lists | The account has no account group. Assign one, or use `--group-orphans` on demo data. |
 | Migration errors such as `near 'IF NOT EXISTS'` | You're on MySQL. Use MariaDB (XAMPP ships it), or `--docker` (step 5). |
 | `mysql/mariadb client not found on PATH` | Add `--docker --port 3307` (step 5), or install XAMPP / MariaDB. |
-| Payment dates are a day off | `app/Config/App.php` has `appTimezone = 'America/Chicago'`. For Sri Lanka, set `'Asia/Colombo'`. |
+| Payment dates are a day off | `app/Config/App.php` sets `appTimezone`. It is `'Asia/Colombo'`; change it if you live elsewhere. |
 | Google login fails | `google/apiclient` isn't installed: `composer require google/apiclient`. This isn't related to this branch. |
 | Need to undo the migration | Restore the backup the script made: `mysql -u root < writable/backups/<file>.sql` |
 
-## 9. What changed
+## 10. What changed
+
+Monthly payment plan (year grid, month view, items, `plan:*` commands):
+[`docs/MONTHLY_PLAN.md`](docs/MONTHLY_PLAN.md).
 
 Bank rates, account types, interest and Quick add: [`docs/BANK_RATES.md`](docs/BANK_RATES.md)
 (run `php spark bankrates:sync` once after the migrations).

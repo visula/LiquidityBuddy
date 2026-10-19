@@ -89,6 +89,22 @@ $routes->post('/js-request/account/transfer/quote', 'AccountController::internal
 $routes->post('/js-request/account/interest/quote', 'BankController::interestQuoteRequest');
 $routes->post('/js-request/account/interest/post', 'BankController::interestPostRequest');
 
+// Monthly payment plan (docs/MONTHLY_PLAN.md)
+$routes->get('/plan', 'PlanController::index');
+$routes->get('/plan/items', 'PlanController::itemsPage');
+$routes->get('/plan/(:num)', 'PlanController::yearPage/$1');
+$routes->get('/plan/(:num)/(:num)', 'PlanController::monthPage/$1/$2');
+$routes->post('/js-request/plan/item/create', 'PlanController::itemCreate');
+$routes->post('/js-request/plan/item/update', 'PlanController::itemUpdate');
+$routes->post('/js-request/plan/item/end', 'PlanController::itemEnd');
+$routes->post('/js-request/plan/item/delete', 'PlanController::itemDelete');
+$routes->post('/js-request/plan/entry/update', 'PlanController::entryUpdate');
+$routes->post('/js-request/plan/entry/skip', 'PlanController::entrySkip');
+$routes->post('/js-request/plan/entry/restore', 'PlanController::entryRestore');
+$routes->post('/js-request/plan/salary-advance', 'PlanController::salaryAdvance');
+$routes->post('/js-request/plan/category/create', 'PlanController::categoryCreate');
+$routes->post('/js-request/plan/category/update', 'PlanController::categoryUpdate');
+
 // Reports
 $routes->get('/report/transactions/(:any)', 'ReportController::transactionReport/$1');
 

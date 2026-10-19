@@ -191,7 +191,7 @@ class AccountController extends PaymentService
             $data['internal_trans_content'] = "<div class='transaction-type-list d-none' id='internal'><h3> Need more than one account to make internal transaction </h3></div>";
         }
 
-        $data['outstandingDues'] = $this->outstandingPayables($this->userAccess());
+        $data['outstandingDues'] = $this->duedTabPayables($this->userAccess());
 
         $data['income_trans_content'] = view('Transaction/income_trans_module', $data);
         $data['dued_trans_content'] = view('Transaction/dued_trans_module', $data);
@@ -415,6 +415,8 @@ class AccountController extends PaymentService
         $accountType = isset(\App\Libraries\BankRateSync::ACCOUNT_TYPES[$accountType]) ? $accountType : 'OTHER';
         $productID = ($accountType === 'CASH') ? '' : trim((string) ($request_data['bank_product_id'] ?? ''));
         $bankName = (string) ($request_data['bank_name'] ?? '');
+        // Optional bank account number, for reference only (cash has none)
+        $accountNumber = ($accountType === 'CASH') ? '' : mb_substr(trim(strip_tags((string) ($request_data['account_number'] ?? ''))), 0, 40);
         $autoInterest = filter_var($request_data['auto_interest'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         if($productID !== ''){
@@ -429,7 +431,7 @@ class AccountController extends PaymentService
             }
         }
 
-        $result = $this->runAtomic(function () use ($userID, $accountName, $groupID, $amount, $methodInput, $accountType, $productID, $bankName, $autoInterest) {
+        $result = $this->runAtomic(function () use ($userID, $accountName, $groupID, $amount, $methodInput, $accountType, $productID, $bankName, $autoInterest, $accountNumber) {
             $accountCreation = $this->accountInitProccess($userID, $accountName, $groupID, $amount);
 
             if(isset($accountCreation['error_id'])){
@@ -452,6 +454,11 @@ class AccountController extends PaymentService
             }
 
             $this->saveAccountType($userID, $accountID, $accountType, $bankName);
+
+            if($accountNumber !== ''){
+                $this->db()->table('account')->set(['accountnumber' => $accountNumber, 'updateddatetime' => time()])
+                    ->where(['sessionid' => $accountID, 'usersessionid' => $userID])->update();
+            }
 
             return ['success' => true, 'data' => ['accountCreation' => $accountCreation, 'paymentMethod' => $method]];
         });
@@ -557,6 +564,27 @@ class AccountController extends PaymentService
             echo $response;
             exit;
             // return $accountUpdate;
+        }
+
+        if(array_key_exists('account_number', $request_data)){
+            $numberUpdate = $this->accountNumberUpdateProccess($this->userAccess(), $accountID, $request_data['account_number']);
+
+            if(isset($numberUpdate['error_id'])){
+                $response = $this->errorHandleforAPIResponses($numberUpdate);
+                echo $response;
+                exit;
+            }
+        }
+
+        // Current amount, when the edit form sends one (a correction, not a transaction)
+        if(array_key_exists('account_balance', $request_data) && $request_data['account_balance'] !== ''){
+            $balanceUpdate = $this->accountBalanceUpdateProccess($this->userAccess(), $accountID, $request_data['account_balance']);
+
+            if(isset($balanceUpdate['error_id'])){
+                $response = $this->errorHandleforAPIResponses($balanceUpdate);
+                echo $response;
+                exit;
+            }
         }
 
         $response = [

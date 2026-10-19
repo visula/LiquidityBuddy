@@ -1,0 +1,259 @@
+/*
+ * Monthly plan pages (year grid, month view, items). Uses the theme tokens.
+ */
+:root {
+    --plan-settled-bg: #e3f4e8;
+    --plan-settled-fg: #17663a;
+    --plan-partial-bg: #fff3d6;
+    --plan-partial-fg: #8a5a00;
+    --plan-overdue-bg: #fde4e4;
+    --plan-overdue-fg: #a32020;
+    --plan-historical-bg: #f1f2f5;
+    --plan-historical-fg: #8a8f9c;
+    --plan-envelope-bg: #eef0fb;
+    --plan-envelope-fg: #39408a;
+}
+
+/* ---------- Toolbar ---------- */
+.plan-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: var(--lb-gap);
+}
+
+.plan-toolbar .plan-toolbar-title {
+    font-weight: 650;
+    font-size: 1.1rem;
+    min-width: 6rem;
+    text-align: center;
+}
+
+.plan-toolbar .plan-toolbar-spacer {
+    flex: 1 1 auto;
+}
+
+/* ---------- Legend ---------- */
+.plan-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--lb-muted);
+    margin-bottom: 0.75rem;
+}
+
+.plan-legend span::before {
+    content: "";
+    display: inline-block;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 0.2rem;
+    margin-right: 0.3rem;
+    vertical-align: -0.1rem;
+    border: 1px solid var(--lb-border);
+}
+
+.plan-legend .lg-settled::before { background: var(--plan-settled-bg); }
+.plan-legend .lg-partial::before { background: var(--plan-partial-bg); }
+.plan-legend .lg-overdue::before { background: var(--plan-overdue-bg); }
+.plan-legend .lg-upcoming::before { background: var(--lb-surface); }
+.plan-legend .lg-historical::before { background: var(--plan-historical-bg); }
+.plan-legend .lg-envelope::before { background: var(--plan-envelope-bg); }
+.plan-legend .lg-skipped::before { background: linear-gradient(to top right, transparent 45%, var(--lb-muted) 50%, transparent 55%); }
+
+/* ---------- Year grid ---------- */
+.plan-grid-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--lb-border);
+    border-radius: 0.5rem;
+}
+
+.lb-page .table.plan-grid {
+    margin: 0;
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.lb-page .table.plan-grid > :not(caption) > * > * {
+    padding: 0.35rem 0.5rem;
+}
+
+.plan-grid th,
+.plan-grid td {
+    white-space: nowrap;
+}
+
+.plan-grid .plan-num {
+    text-align: right;
+}
+
+/* first column stays visible while scrolling sideways */
+.plan-grid .plan-sticky {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--lb-surface);
+    min-width: 12rem;
+    max-width: 16rem;
+    white-space: normal;
+    border-right: 1px solid var(--lb-border);
+}
+
+.plan-grid thead .plan-sticky {
+    z-index: 2;
+}
+
+.plan-grid .plan-month-head a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.plan-grid .plan-month-head a:hover {
+    color: var(--lb-brand);
+    text-decoration: underline;
+}
+
+.plan-grid .plan-month-head.is-current,
+.plan-grid td.is-current {
+    box-shadow: inset 0 2px 0 var(--lb-brand);
+}
+
+.plan-grid .plan-group-row td {
+    background: var(--lb-brand-soft);
+    color: var(--lb-brand);
+    font-weight: 650;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.plan-grid .plan-item-name {
+    font-weight: 500;
+}
+
+.plan-grid .plan-item-meta {
+    display: block;
+    color: var(--lb-muted);
+    font-size: 0.72rem;
+}
+
+.plan-cell {
+    text-align: right;
+}
+
+.plan-cell.is-editable {
+    cursor: pointer;
+}
+
+.plan-cell.is-editable:hover {
+    outline: 2px solid var(--lb-brand);
+    outline-offset: -2px;
+}
+
+.plan-cell--settled { background: var(--plan-settled-bg) !important; color: var(--plan-settled-fg); }
+.plan-cell--partial { background: var(--plan-partial-bg) !important; color: var(--plan-partial-fg); }
+.plan-cell--overdue { background: var(--plan-overdue-bg) !important; color: var(--plan-overdue-fg); font-weight: 600; }
+.plan-cell--historical { background: var(--plan-historical-bg) !important; color: var(--plan-historical-fg); }
+.plan-cell--envelope { background: var(--plan-envelope-bg) !important; color: var(--plan-envelope-fg); }
+.plan-cell--skipped { color: var(--lb-muted); text-decoration: line-through; }
+
+.plan-cell .plan-cell-sub {
+    display: block;
+    font-size: 0.68rem;
+    opacity: 0.85;
+}
+
+.plan-grid tfoot td,
+.plan-grid tfoot th {
+    font-weight: 600;
+    background: var(--lb-surface);
+}
+
+.plan-grid tfoot tr.plan-net-row td,
+.plan-grid tfoot tr.plan-net-row th {
+    border-top: 2px solid var(--lb-text);
+}
+
+.plan-negative { color: var(--plan-overdue-fg); }
+.plan-positive { color: var(--plan-settled-fg); }
+
+/* ---------- Month view ---------- */
+.plan-stat {
+    background: var(--lb-surface);
+    border: 1px solid var(--lb-border);
+    border-radius: var(--lb-radius);
+    padding: 0.85rem 1rem;
+    height: 100%;
+}
+
+.plan-stat .plan-stat-label {
+    color: var(--lb-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.plan-stat .plan-stat-value {
+    font-size: 1.25rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+.plan-stat .plan-stat-sub {
+    color: var(--lb-muted);
+    font-size: 0.8rem;
+}
+
+.plan-badge-state {
+    font-weight: 600;
+}
+
+.plan-badge-state.state-settled { background: var(--plan-settled-bg); color: var(--plan-settled-fg); }
+.plan-badge-state.state-partial { background: var(--plan-partial-bg); color: var(--plan-partial-fg); }
+.plan-badge-state.state-overdue { background: var(--plan-overdue-bg); color: var(--plan-overdue-fg); }
+.plan-badge-state.state-upcoming { background: var(--lb-bg); color: var(--lb-text); }
+.plan-badge-state.state-historical { background: var(--plan-historical-bg); color: var(--plan-historical-fg); }
+.plan-badge-state.state-skipped { background: var(--lb-bg); color: var(--lb-muted); text-decoration: line-through; }
+
+.plan-envelope-bar {
+    height: 0.4rem;
+    border-radius: 0.2rem;
+    background: var(--lb-bg);
+    overflow: hidden;
+    min-width: 6rem;
+}
+
+.plan-envelope-bar > span {
+    display: block;
+    height: 100%;
+    background: var(--plan-envelope-fg);
+}
+
+.plan-envelope-bar.is-over > span {
+    background: var(--plan-overdue-fg);
+}
+
+/* ---------- Items page ---------- */
+.plan-items-table .plan-item-ended td {
+    color: var(--lb-muted);
+}
+
+.plan-percent-input {
+    max-width: 6rem;
+}
+
+.plan-dues-table td:nth-child(4) {
+    min-width: 11rem;
+}
+
+.plan-dues-table td:nth-child(n+5) {
+    white-space: nowrap;
+}
+
+/* the settle panel is narrow: one picker per row */
+#plan-settle .row > .col-6 {
+    flex: 0 0 100%;
+    max-width: 100%;
+}

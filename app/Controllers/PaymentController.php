@@ -244,7 +244,7 @@ class PaymentController extends PaymentService
     {
         $input = [];
 
-        foreach (['name', 'type', 'reference', 'credit_limit', 'is_default'] as $field) {
+        foreach (['name', 'type', 'reference', 'credit_limit', 'is_default', 'show_in_dropdown'] as $field) {
             if(array_key_exists($field, $request_data)){
                 $input[$field] = $request_data[$field];
             }

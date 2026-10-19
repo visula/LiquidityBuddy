@@ -110,7 +110,8 @@ class PaymentService extends AccountService
         $builder = $this->db()->table('paymentmethod pm')
             ->select('pm.sessionid AS PaymentMethodSessionID, pm.name AS PaymentMethodName, pm.type AS PaymentMethodType,
                       pm.reference AS PaymentMethodReference, pm.creditlimit AS PaymentMethodCreditLimit,
-                      pm.isdefault AS PaymentMethodIsDefault, a.sessionid AS AccountSessionID, a.name AS AccountName,
+                      pm.isdefault AS PaymentMethodIsDefault, pm.showindropdown AS PaymentMethodShowInDropdown,
+                      a.sessionid AS AccountSessionID, a.name AS AccountName,
                       a.currentbalance AS AccountCurrentBalance', false)
             ->join('account a', 'a.sessionid = pm.accountsessionid')
             ->where('pm.usersessionid', $userID)
@@ -253,6 +254,10 @@ class PaymentService extends AccountService
             $clean['PaymentMethodIsDefault'] = filter_var($input['is_default'], FILTER_VALIDATE_BOOLEAN) ? 'Y' : 'N';
         }
 
+        if (array_key_exists('show_in_dropdown', $input)) {
+            $clean['PaymentMethodShowInDropdown'] = filter_var($input['show_in_dropdown'], FILTER_VALIDATE_BOOLEAN) ? 'Y' : 'N';
+        }
+
         return $clean;
     }
 
@@ -262,6 +267,27 @@ class PaymentService extends AccountService
             ->set('isdefault', 'N')
             ->where(['accountsessionid' => $accountID, 'usersessionid' => $userID])
             ->update();
+    }
+
+    /** One debit card per account: a second active debit card on the same account is refused. */
+    protected function debitCardConflict(string $userID, string $accountID, string $type, string $exceptMethodID = '')
+    {
+        if ($type !== 'DEBIT_CARD') {
+            return null;
+        }
+
+        $builder = $this->db()->table('paymentmethod')
+            ->where(['accountsessionid' => $accountID, 'usersessionid' => $userID, 'type' => 'DEBIT_CARD', 'status' => 'A']);
+
+        if ($exceptMethodID !== '') {
+            $builder->where('sessionid !=', $exceptMethodID);
+        }
+
+        if ($builder->countAllResults() > 0) {
+            return $this->paymentError('0068', 'Payment Method', 'This account already has a debit card. A bank can have many accounts, but each account takes one debit card.');
+        }
+
+        return null;
     }
 
     protected function paymentMethodCreateProccess(string $userID, $accountID, array $input)
@@ -280,6 +306,12 @@ class PaymentService extends AccountService
 
         if ($clean['PaymentMethodType'] !== 'CREDIT_CARD') {
             $clean['PaymentMethodCreditLimit'] = '0.00';
+        }
+
+        $conflict = $this->debitCardConflict($userID, $accountID, $clean['PaymentMethodType']);
+
+        if ($conflict !== null) {
+            return $conflict;
         }
 
         return $this->runAtomic(function () use ($userID, $accountID, $clean) {
@@ -328,6 +360,12 @@ class PaymentService extends AccountService
 
         if ($type !== 'CREDIT_CARD') {
             $clean['PaymentMethodCreditLimit'] = '0.00';
+        }
+
+        $conflict = $this->debitCardConflict($userID, $method['AccountSessionID'], $type, $method['PaymentMethodSessionID']);
+
+        if ($conflict !== null) {
+            return $conflict;
         }
 
         // While a credit card account owes money, its limit cannot drop below the
@@ -776,6 +814,20 @@ class PaymentService extends AccountService
     }
 
     /**
+     * Dues for the Dued tab. Monthly plan dues are generated a year ahead, so
+     * only those due by the end of next month are listed (the month view shows
+     * the rest); every other due is listed as before.
+     */
+    protected function duedTabPayables(string $userID): array
+    {
+        $until = date('Y-m-t', strtotime(date('Y-m-01') . ' +1 month'));
+
+        return array_values(array_filter($this->outstandingPayables($userID), static function ($due) use ($until) {
+            return $due['PaymentPlanLink'] !== 'planitem' || $due['PayableDueDate'] <= $until;
+        }));
+    }
+
+    /**
      * Settle selected dues, fully or partially, with one payment.
      * Partial amounts are applied oldest due first.
      *
@@ -869,18 +921,39 @@ class PaymentService extends AccountService
             $description .= $what;
         }
 
+        $settlement = ($amount >= $totalOutstanding) ? 'FULL' : 'PARTIAL';
+        $linkType = (count($plans) === 1) ? 'paymentplan' : 'payable';
+        $linkID = (count($plans) === 1) ? $plans[0] : null;
+
+        // A transfer runs the internal transaction process: the transfer kind and channel, and the bank's charge
+        if ($direction === 'TRANSFER') {
+            return $this->internalTransfer($userID, [
+                'from_account'      => $r['account'] ?? '',
+                'to_account'        => $toAccount,
+                'payment_method'    => $r['method'] ?? '',
+                'budget'            => $r['budget'] ?? '',
+                'amount'            => $amount,
+                'description'       => $description,
+                'reference'         => $r['reference'] ?? '',
+                'payment_date'      => $r['date'] ?? '',
+                'settlement'        => $settlement,
+                'link_type'         => $linkType,
+                'link_id'           => $linkID,
+                'allocations'       => $allocations,
+                'allow_over_budget' => $r['allow_over_budget'] ?? false,
+            ]);
+        }
+
         return $this->recordPayment($userID, [
             'direction'   => $direction,
             'account'     => $r['account'] ?? '',
             'method'      => $r['method'] ?? '',
-            'to_account'  => $toAccount,
             'budget'      => $r['budget'] ?? '',
             'amount'      => $amount,
-            // a transfer is a move between own accounts: budgets and envelopes skip it like any transfer
-            'category'    => ($direction === 'TRANSFER') ? 'transfer' : 'settlement',
-            'settlement'  => ($amount >= $totalOutstanding) ? 'FULL' : 'PARTIAL',
-            'link_type'   => (count($plans) === 1) ? 'paymentplan' : 'payable',
-            'link_id'     => (count($plans) === 1) ? $plans[0] : null,
+            'category'    => 'settlement',
+            'settlement'  => $settlement,
+            'link_type'   => $linkType,
+            'link_id'     => $linkID,
             'description' => $description,
             'reference'   => $r['reference'] ?? '',
             'date'        => $r['date'] ?? '',

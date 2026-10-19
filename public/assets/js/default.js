@@ -60,6 +60,30 @@ LB.post = function (path, data, onSuccess, errorTarget, $button) {
         });
 };
 
+/**
+ * Re-render one region of the current page from the server and swap it in, instead of
+ * reloading the whole page. The region is the same markup the page renders, so the table
+ * shows what the server holds. `done` runs after the swap, for anything that must rebind
+ * or reset. Scripts bound to elements inside a region must delegate from `document`.
+ */
+LB.refreshRegion = function (selector, done) {
+    $.get(window.location.href).done(function (html) {
+        var $region = $('<div>').append($.parseHTML(html)).find(selector);
+
+        if ($region.length === 0) {
+            window.location.reload();
+            return;
+        }
+
+        $(selector).replaceWith($region);
+        $(document).trigger('lb:refreshed', [selector]);
+
+        if (typeof done === 'function') { done(); }
+    }).fail(function () {
+        window.location.reload();
+    });
+};
+
 LB.money = function (value) {
     return Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };

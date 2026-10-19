@@ -108,6 +108,17 @@ class MainService extends BlueprintService
                         ['ID' => 'payment-history', 'Title' => 'Payment history', 'Icon' => 'clock-history', 'Link' => '/payment/history'],
                     ],
                 ],
+                'MonthlyPlan' => [
+                    'Title' => 'Monthly Plan',
+                    'Icon' => 'calendar3',
+                    'ID' => 'plan-menu',
+                    'Link' => '',
+                    'SubMenu' => [
+                        ['ID' => 'plan-year', 'Title' => 'Year grid', 'Icon' => 'grid-3x3', 'Link' => '/plan/' . date('Y')],
+                        ['ID' => 'plan-month', 'Title' => 'This month', 'Icon' => 'calendar-check', 'Link' => '/plan/' . date('Y/n')],
+                        ['ID' => 'plan-items', 'Title' => 'Plan items', 'Icon' => 'list-check', 'Link' => '/plan/items'],
+                    ],
+                ],
                 'Budget' => [
                     'Title' => 'Budgets',
                     'Icon' => 'pie-chart',

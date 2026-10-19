@@ -38,6 +38,7 @@ $(document).ready(function(){
             credit_limit: $('#credit-limit').val(),
             account_type: $typeSection.find('#account-type').val(),
             bank_name: $typeSection.find('#bank-name').val(),
+            account_number: $('#account-number').val(),
             bank_product_id: $typeSection.find('#bank-product').val(),
             auto_interest: $typeSection.find('#new-auto-interest').is(':checked') ? 1 : 0
         }, function () {
@@ -79,6 +80,7 @@ $(document).ready(function(){
             $hint.html($hint.data('default'));
             $('#auto-interest-row').addClass('d-none');
             $('#bank-name-col').toggleClass('d-none', isCash);
+            $('#account-number-col').toggleClass('d-none', isCash);
             return;
         }
 
@@ -107,9 +109,10 @@ $(document).ready(function(){
         $('#update-account-btn').data('session-id',session_id);
 
         $('#account-name').val($('#'+session_id+' .account-name').html());
-        $('#amount').val($('#'+session_id+' .account-balance').html());
-        $('#amount').addClass('disabled').attr('disabled',true);
+        $('#amount').val($('#'+session_id+' .account-balance').html().replace(/,/g, ''));
         $('#account-group-list').val($('#'+session_id+' .account-group').data('account-group-id'));
+        $('#account-number').val($('#'+session_id).attr('data-account-number') || '');
+        $('#account-number-col').removeClass('d-none');
 
         $('#create-account-btn').addClass('d-none');
         $('#update-account-btn').removeClass('d-none');
@@ -136,6 +139,8 @@ $(document).ready(function(){
                 account_id:session_id,
                 account_name:$('#account-name').val(),
                 account_group:$('#account-group-list').val(),
+                account_balance:$('#amount').val(),
+                account_number:$('#account-number').val(),
             },
             success: function (data) {
                 // window.location.reload();
@@ -173,6 +178,7 @@ $(document).ready(function(){
         $('#default-method-section').removeClass('d-none');
         $('#account-type-section').removeClass('d-none');
         $('#account-name').val('');
+        $('#account-number').val('');
         $('#amount').val(0);
         $('#account-group-list').val($('#account-group-list').data('default-value'));
         $('.error-message').html("&nbsp;");

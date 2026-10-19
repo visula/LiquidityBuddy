@@ -24,6 +24,21 @@ name). Set real credit limits afterwards under **Payment Methods**.
 | `duepaid`       | Allocation of a payment against payables (ERD *Due_Paid*), giving full and partial settlement. |
 | `transaction`   | Now carries `paymentsessionid`, `paymentmethodsessionid` and `balanceafter`. |
 
+**Debit cards:** an account takes at most one active debit card (error `0068`). A bank can
+have many accounts, each with its own card. Adding a second debit card to an account, or
+changing a method to a debit card on an account that already has one, is refused.
+
+**Card visibility:** `paymentmethod.showindropdown` (`N` = hidden). Hidden methods are left
+out of the payment and plan dropdowns, but stay on the method list and on any item that
+already uses them. Use it for an account with no card.
+
+**Account number:** `account.accountnumber`, optional, for reference only. It's set when the
+account is created and can be edited from the account list. Cash accounts never have one.
+
+**Current amount edit:** the account list's Update form can set the current amount. This
+overwrites the stored balance directly and doesn't post a transaction, so it isn't in the
+payment history. Negative amounts are accepted only for credit cards (error `0069` otherwise).
+
 **Credit cards:** an account may go below zero down to `-creditlimit` when paying with a
 credit card method. Paying the card off is an internal transfer into the card account.
 A limit can't be lowered below what's owed, and the card can't be removed or retyped while

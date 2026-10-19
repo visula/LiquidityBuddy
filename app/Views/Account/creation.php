@@ -59,6 +59,12 @@
                                         <label for="amount">Current Amount</label>
                                     </div>
                                 </div>
+                                <div class="col-6" id="account-number-col">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" placeholder="Account number" id="account-number" maxlength="40">
+                                        <label for="account-number">Account number (optional, bank accounts)</label>
+                                    </div>
+                                </div>
                             </div>
                             <?php
                                 $pct = static function ($value) { return rtrim(rtrim(number_format((float) $value, 2), '0'), '.'); };

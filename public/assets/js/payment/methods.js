@@ -13,6 +13,7 @@ $(document).ready(function () {
         $('#method-reference').val('');
         $('#method-credit-limit').val('0.00');
         $('#method-default').prop('checked', false);
+        $('#method-show').prop('checked', true);
         $('#method-form-title').text('Add payment method');
         $('#save-method-btn').text('Add Method');
         $('#cancel-method-btn').addClass('d-none');
@@ -32,6 +33,7 @@ $(document).ready(function () {
         $('#method-reference').val($btn.attr('data-reference'));
         $('#method-credit-limit').val(Number($btn.attr('data-credit-limit') || 0).toFixed(2));
         $('#method-default').prop('checked', $btn.attr('data-default') === 'Y');
+        $('#method-show').prop('checked', $btn.attr('data-show') !== 'N');
         $('#method-form-title').text('Edit payment method');
         $('#save-method-btn').text('Save Changes');
         $('#cancel-method-btn').removeClass('d-none');
@@ -54,7 +56,8 @@ $(document).ready(function () {
             type: $('#method-type').val(),
             reference: $('#method-reference').val(),
             credit_limit: $('#method-credit-limit').val(),
-            is_default: $('#method-default').is(':checked') ? 1 : 0
+            is_default: $('#method-default').is(':checked') ? 1 : 0,
+            show_in_dropdown: $('#method-show').is(':checked') ? 1 : 0
         };
 
         if (id) {
