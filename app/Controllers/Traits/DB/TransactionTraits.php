@@ -23,6 +23,7 @@ trait TransactionTraits{
             'AccountID'                 => 'id',
             'AccountGroupSessionID'     => 'sessionid',
             'AccountGroupName'          => 'name',
+            'AccountGroupType'          => 'grouptype',
             'AccountGroupStatus'        => 'status',
             'UserSessionID'             => 'usersessionid'
         ];

@@ -40,6 +40,15 @@
                                         <label for="account-group-name">Enter Account Group</label>
                                     </div>
                                 </div>
+                                <div class="col-6 mb-3">
+                                    <div class="form-floating">
+                                        <select class="form-select" id="account-group-type">
+                                            <option value="OTHER">Other</option>
+                                            <option value="BANK">Bank (one debit card for all its accounts)</option>
+                                        </select>
+                                        <label for="account-group-type">Group type</label>
+                                    </div>
+                                </div>
                             </div>
                             <div class="row">
                                 <p class="error-message">&nbsp;</p>

@@ -9,7 +9,7 @@ $(document).ready(function(){
         
         if($(this).val() == ''){$(this).val(0);}
 
-        $('#amount').val(parseFloat($(this).val()).toFixed(2));
+        $('#amount').val(LB.amountValue($(this).val()).toFixed(2));
         
         if($(this).val() != '' && $(this).val() != '0.00'){
             $('.error-message').html("&nbsp;");

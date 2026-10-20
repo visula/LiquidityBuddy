@@ -706,9 +706,10 @@ class AccountController extends PaymentService
         }
 
         $accountGroupName = $request_data['account_group_name'];
+        $accountGroupType = (string) ($request_data['account_group_type'] ?? 'OTHER');
 
         // TODO:: link user default user
-        $accountGroupCreate = $this->accountGroupCreateProccess($this->userAccess(), $accountGroupName);
+        $accountGroupCreate = $this->accountGroupCreateProccess($this->userAccess(), $accountGroupName, $accountGroupType);
 
         if(isset($accountGroupCreate['error_id'])){            
             $response = $this->errorHandleforAPIResponses($accountGroupCreate);
@@ -741,9 +742,10 @@ class AccountController extends PaymentService
 
         $accountGroupID = $request_data['account_group_id'];
         $accountGroupName = $request_data['account_group_name'];
+        $accountGroupType = array_key_exists('account_group_type', $request_data) ? (string) $request_data['account_group_type'] : null;
 
         // TODO:: link user default user
-        $accountGroupUpdate = $this->accountGroupUpdateProccess($this->userAccess(), $accountGroupID, $accountGroupName);
+        $accountGroupUpdate = $this->accountGroupUpdateProccess($this->userAccess(), $accountGroupID, $accountGroupName, $accountGroupType);
 
         if(isset($accountGroupUpdate['error_id'])){            
             $response = $this->errorHandleforAPIResponses($accountGroupUpdate);

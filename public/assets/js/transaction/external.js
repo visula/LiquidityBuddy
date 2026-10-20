@@ -22,7 +22,7 @@ $(document).ready(function(){
         var description = $external.find('#description').val();
         var external_data_list = {};
         var today = new Date().toISOString().slice(0, 10);
-        var amount = parseFloat($external.find('#amount').val()) || 0;
+        var amount = LB.amountValue($external.find('#amount').val());
 
         if (amount <= 0) {
             LB.showError('The payment amount must be greater than zero.');

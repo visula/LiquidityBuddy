@@ -17,7 +17,7 @@ $(document).ready(function(){
         $dued.find('#amount').prop('readonly', !partial);
         if (!partial) {
             $dued.find('#amount').val(total.toFixed(2));
-        } else if ((parseFloat($dued.find('#amount').val()) || 0) > total) {
+        } else if (LB.amountValue($dued.find('#amount').val()) > total) {
             $dued.find('#amount').val(total.toFixed(2));
         }
     }
@@ -81,7 +81,7 @@ $(document).ready(function(){
         }
 
         var mode = $dued.find('input[name="dued-mode"]:checked').val();
-        var amount = parseFloat($dued.find('#amount').val()) || 0;
+        var amount = LB.amountValue($dued.find('#amount').val());
 
         if (amount <= 0) {
             LB.showError('Please enter the amount to pay.');

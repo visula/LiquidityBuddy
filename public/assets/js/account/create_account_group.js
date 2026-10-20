@@ -17,6 +17,7 @@ if (!window.__account_group_initialized__) {
                 url: base_url + "/js-request/account-group/create",
                 data: {
                     account_group_name:$('#account-group-name').val(),
+                    account_group_type:$('#account-group-type').val(),
                 },
                 success: function (data) {
                     window.location.reload();
@@ -29,6 +30,7 @@ if (!window.__account_group_initialized__) {
             $('#update-account-group-btn').data('session-id',session_id);
 
             $('#account-group-name').val($('#'+session_id+' .account-group-name').html());
+            $('#account-group-type').val($('#'+session_id+' .account-group-type').attr('data-account-group-type') || 'OTHER');
 
             $('#create-account-group-btn').addClass('d-none');
             $('#update-account-group-btn').removeClass('d-none');
@@ -52,6 +54,7 @@ if (!window.__account_group_initialized__) {
                 data: {
                     account_group_id:session_id,
                     account_group_name:$('#account-group-name').val(),
+                    account_group_type:$('#account-group-type').val(),
                 },
                 success: function (data) {
                     window.location.reload();

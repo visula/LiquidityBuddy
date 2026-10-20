@@ -130,7 +130,7 @@ $(document).ready(function(){
         var item_list = [];
         var item = [];
         
-        if($('#purchase #amount').val() == '' || $('#purchase #amount').val() <= 0){
+        if($('#purchase #amount').val() == '' || LB.amountValue($('#purchase #amount').val()) <= 0){
             $('#common-error').text('* Amount should be larger than 0');
             $('#common-error').removeClass('d-none');
             return;

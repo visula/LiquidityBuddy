@@ -3,6 +3,7 @@
     <thead>
     <tr>
         <th>Account Group</th>
+        <th>Type</th>
         <?php if(!empty($edit_mode)){ ?><th></th><?php } ?>
     </tr>
     </thead>
@@ -12,6 +13,7 @@
             ?>
             <tr class="t-row-account-group-action <?php if(($key + 1) > $page_limit){echo 'd-none';}?>" data-page-no="account-group-page-no-<?= $currentPage?>" id="<?= $accountGroup['AccountGroupSessionID']?>">
                 <td class="account-group-name"><?= $accountGroup['AccountGroupName'] ?></td>
+                <td class="account-group-type" data-account-group-type="<?= esc($accountGroup['AccountGroupType'] ?? 'OTHER', 'attr') ?>"><?= ($accountGroup['AccountGroupType'] ?? 'OTHER') === 'BANK' ? 'Bank' : 'Other' ?></td>
                 <?php if($edit_mode){ ?>
                     <td class="text-end text-nowrap"><a data-account-group-id="<?= $accountGroup['AccountGroupSessionID'] ?>" class="btn btn-sm btn-outline-primary update-account-group-btn">Update</a> <a data-account-group-id="<?= $accountGroup['AccountGroupSessionID'] ?>"  class="btn btn-sm btn-outline-danger delete-account-group-btn">Remove</a></td>
                 <?php } ?>

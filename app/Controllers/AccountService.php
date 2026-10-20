@@ -42,7 +42,7 @@ class AccountService extends MainService
     public function activeAccountGroupsListAccessModule($userID, $accountgroupID = '')
     {
         $condtionList = ['UserSessionID' => $userID, 'AccountGroupStatus' => 'A'];
-        $feildList = ['AccountGroupSessionID','AccountGroupName'];
+        $feildList = ['AccountGroupSessionID','AccountGroupName','AccountGroupType'];
         $organizerList = [];
 
         if($accountgroupID != ''){
@@ -456,6 +456,12 @@ class AccountService extends MainService
 
         if($groupID != '' && $groupID != $response['AccountGroupSessionID'])
         {
+            // Moving an account that holds a debit card into a bank group that already has one
+            if($this->accountGroupTypeOf($groupID) === 'BANK' && $this->debitCardCount($userID, '', $groupID) > 0 && $this->debitCardCount($userID, $accountID) > 0)
+            {
+                return $this->paymentError('0091', 'Account Group', 'That bank group already has a debit card. A bank group takes one card across all its accounts.');
+            }
+
             $updateList['AccountGroupSessionID'] = $groupID;
         }
 
@@ -581,11 +587,12 @@ class AccountService extends MainService
         return $response;
     }
 
-    public function accountGroupCreateProccess($userID, $accountGroupName)
+    public function accountGroupCreateProccess($userID, $accountGroupName, $accountGroupType = 'OTHER')
     {
         $data = [
             'UserSessionID' => $userID,
             'AccountGroupName' => $accountGroupName,
+            'AccountGroupType' => $accountGroupType === 'BANK' ? 'BANK' : 'OTHER',
         ];
 
         $newAccountGroup = $this->insertDatatoDB('accountgroup', $data);
@@ -598,11 +605,24 @@ class AccountService extends MainService
         return $newAccountGroup;
     }
 
-    public function accountGroupUpdateProccess($userID, $accountGroupID, $accountGroupName)
+    public function accountGroupUpdateProccess($userID, $accountGroupID, $accountGroupName, $accountGroupType = null)
     {
         $data = [
             'AccountGroupName' => $accountGroupName,
         ];
+
+        if($accountGroupType !== null)
+        {
+            $accountGroupType = $accountGroupType === 'BANK' ? 'BANK' : 'OTHER';
+
+            // A bank group can't hold more than one debit card across its accounts
+            if($accountGroupType === 'BANK' && $this->debitCardCount($userID, '', $accountGroupID) > 1)
+            {
+                return $this->paymentError('0091', 'Account Group', 'This group has more than one debit card. A bank group takes one card across all its accounts, so remove the extra cards first.');
+            }
+
+            $data['AccountGroupType'] = $accountGroupType;
+        }
 
         $updateAccountGroup = $this->updateDBData('accountgroup', ['UserSessionID' => $userID, 'AccountGroupSessionID' => $accountGroupID], $data);
 

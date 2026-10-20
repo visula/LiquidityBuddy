@@ -269,22 +269,52 @@ class PaymentService extends AccountService
             ->update();
     }
 
-    /** One debit card per account: a second active debit card on the same account is refused. */
+    /** Active debit cards on one account, or across all accounts of a group (bank groups take one). */
+    protected function debitCardCount(string $userID, string $accountID = '', string $groupID = '', string $exceptMethodID = ''): int
+    {
+        $builder = $this->db()->table('paymentmethod pm')
+            ->join('account a', 'a.sessionid = pm.accountsessionid AND a.usersessionid = pm.usersessionid')
+            ->where(['pm.usersessionid' => $userID, 'pm.type' => 'DEBIT_CARD', 'pm.status' => 'A']);
+
+        if ($accountID !== '') {
+            $builder->where('pm.accountsessionid', $accountID);
+        }
+
+        if ($groupID !== '') {
+            $builder->where('a.accountgroupid', $groupID);
+        }
+
+        if ($exceptMethodID !== '') {
+            $builder->where('pm.sessionid !=', $exceptMethodID);
+        }
+
+        return (int) $builder->countAllResults();
+    }
+
+    protected function accountGroupTypeOf(string $groupID): string
+    {
+        return (string) $this->db()->table('accountgroup')->select('grouptype')->where('sessionid', $groupID)->get()->getRow('grouptype');
+    }
+
+    /**
+     * Debit card rules: one per account, and one per bank group (a group of type BANK
+     * can hold many accounts, but only one card across them).
+     */
     protected function debitCardConflict(string $userID, string $accountID, string $type, string $exceptMethodID = '')
     {
         if ($type !== 'DEBIT_CARD') {
             return null;
         }
 
-        $builder = $this->db()->table('paymentmethod')
-            ->where(['accountsessionid' => $accountID, 'usersessionid' => $userID, 'type' => 'DEBIT_CARD', 'status' => 'A']);
-
-        if ($exceptMethodID !== '') {
-            $builder->where('sessionid !=', $exceptMethodID);
+        if ($this->debitCardCount($userID, $accountID, '', $exceptMethodID) > 0) {
+            return $this->paymentError('0068', 'Payment Method', 'This account already has a debit card. Each account takes one debit card.');
         }
 
-        if ($builder->countAllResults() > 0) {
-            return $this->paymentError('0068', 'Payment Method', 'This account already has a debit card. A bank can have many accounts, but each account takes one debit card.');
+        $groupID = (string) $this->db()->table('account')->select('accountgroupid')
+            ->where(['sessionid' => $accountID, 'usersessionid' => $userID])->get()->getRow('accountgroupid');
+
+        if ($groupID !== '' && $this->accountGroupTypeOf($groupID) === 'BANK' && $this->debitCardCount($userID, '', $groupID, $exceptMethodID) > 0) {
+            return $this->paymentError('0091', 'Payment Method', 'This bank group already has a debit card. A bank group takes one card across all its accounts.');
         }
 
         return null;

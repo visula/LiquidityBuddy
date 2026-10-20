@@ -56,7 +56,7 @@ $(document).ready(function(){
             console.log('Test');
         }
 
-        partial_amount = ($(`#${id} #amount`).val() / $(`#scheduled-payment-period`).val());
+        partial_amount = (LB.amountValue($(`#${id} #amount`).val()) / $(`#scheduled-payment-period`).val());
 
         console.log($(`#${id} #amount`).val());
         console.log($(`#scheduled-payment-period`).val());

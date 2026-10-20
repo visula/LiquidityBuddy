@@ -37,7 +37,7 @@ $(document).ready(function(){
         var amount = $('#income #amount').val();
         var description = $('#income #description').val();
         console.log(amount);
-        if(amount == '' || parseFloat(amount) <= 0){
+        if(amount == '' || LB.amountValue(amount) <= 0){
             LB.showError('Please enter amount');
             return;
         }

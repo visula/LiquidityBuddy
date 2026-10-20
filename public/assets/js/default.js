@@ -84,6 +84,27 @@ LB.refreshRegion = function (selector, done) {
     });
 };
 
+/** The number in an amount field, with thousands separators allowed ("1,234.50" -> 1234.5). */
+LB.amountValue = function (value) {
+    return parseFloat(String(value === undefined || value === null ? '' : value).replace(/,/g, '')) || 0;
+};
+
+/**
+ * Amount fields show thousands separators when they lose focus and go back to plain
+ * digits while being edited, so typing never fights the separators.
+ */
+$(document).on('focusout', '#amount, input[name="amount"]', function () {
+    var $field = $(this);
+    if ($field.prop('readonly') || $field.val() === '') { return; }
+    $field.val(Number(LB.amountValue($field.val())).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+});
+
+$(document).on('focus', '#amount, input[name="amount"]', function () {
+    var $field = $(this);
+    if ($field.val() === '') { return; }
+    $field.val(String(LB.amountValue($field.val())));
+});
+
 LB.money = function (value) {
     return Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
