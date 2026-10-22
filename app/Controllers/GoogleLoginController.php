@@ -37,11 +37,7 @@ class GoogleLoginController extends Controller
 
         // Get the authorization code
         if ($this->request->getVar('code')) {
-        // return $this->request->getGet();
-        // $request_data = $this->handleGetBodyDataList();
 
-        // var_dump($this->request->getVar('code'));
-        // die;
             $token = $client->fetchAccessTokenWithAuthCode($this->request->getVar('code'));
             $client->setAccessToken($token);
 
@@ -63,8 +59,6 @@ class GoogleLoginController extends Controller
             $fe_user = new FEUser();
             $existingUser = $fe_user->googleAccountHandle($userData);
 
-            // var_dump($existingUser);
-            // die;
 
             if(!$existingUser['is_login']){
                 return redirect()->to(base_url('/login'))->with('status','Google login failure');
@@ -78,7 +72,6 @@ class GoogleLoginController extends Controller
         } else {
             // If no authorization code, redirect to login page
             return redirect()->to(base_url('/login'))->with('status','Google login failure');
-            // return redirect()->to(base_url('login'))->with('status',$Access['error_message']);
 
         }
     }

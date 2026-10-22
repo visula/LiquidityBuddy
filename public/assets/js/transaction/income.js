@@ -33,16 +33,13 @@ $(document).ready(function(){
     })
 
     $('#income #payment-btn').on('click',function(){
-        console.log('clicked');
         var amount = $('#income #amount').val();
         var description = $('#income #description').val();
-        console.log(amount);
         if(amount == '' || LB.amountValue(amount) <= 0){
             LB.showError('Please enter amount');
             return;
         }
 
-        console.log(description);
         if(description == ''){
             LB.showError('Please enter description');
             return;
@@ -50,7 +47,6 @@ $(document).ready(function(){
 
         var type = $('#income input[name="income-type"]:checked').val();
         var collectionPlan = [];
-        console.log(collectionPlan);
         if(type == 'till'){
             var date = $('#income #start-date').val();
             var planType = $('#until-plan-type').val();

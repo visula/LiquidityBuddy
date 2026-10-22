@@ -26,17 +26,6 @@ class AccountService extends MainService
         return $response;
     }
 
-    public function getAccountName($userID, $accountID)
-    {
-        $getAccountDetails = $this->activeAccountListAccessModule($userID, $accountID);
-
-        if(isset($getAccountDetails['error_id']))
-        {
-            return $getAccountDetails;
-        }
-
-        return $getAccountDetails['AccountName'];
-    }
 
     // Active Account List Access of the User ID
     public function activeAccountGroupsListAccessModule($userID, $accountgroupID = '')

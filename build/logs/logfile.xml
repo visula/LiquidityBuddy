@@ -1,17 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
-  <testsuite name="BankRateSyncTest" file="/app/tests/unit/BankRateSyncTest.php" tests="12" assertions="60" errors="0" failures="0" skipped="0" time="0.928582">
-    <testcase name="testMapsNestedFields" file="/app/tests/unit/BankRateSyncTest.php" line="35" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="7" time="0.564849"/>
-    <testcase name="testFractionRatesBecomePercent" file="/app/tests/unit/BankRateSyncTest.php" line="51" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="1" time="0.003953"/>
-    <testcase name="testUnknownTypeAndMissingCodeFallBack" file="/app/tests/unit/BankRateSyncTest.php" line="61" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="4" time="0.041358"/>
-    <testcase name="testRejectsItemsWithoutBankNameOrValidRate" file="/app/tests/unit/BankRateSyncTest.php" line="74" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="4" time="0.003654"/>
-    <testcase name="testFixedBankNameForSingleBankFeeds" file="/app/tests/unit/BankRateSyncTest.php" line="84" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="1" time="0.004297"/>
-    <testcase name="testStripsMarkupFromFeedText" file="/app/tests/unit/BankRateSyncTest.php" line="91" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="2" time="0.062017"/>
-    <testcase name="testDigFollowsDotPathsAndListIndexes" file="/app/tests/unit/BankRateSyncTest.php" line="102" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="3" time="0.003971"/>
-    <testcase name="testBundledSampleFeedMapsEveryProduct" file="/app/tests/unit/BankRateSyncTest.php" line="112" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="13" time="0.030660"/>
-    <testcase name="testMapsChargesThroughTypeAndChannelMaps" file="/app/tests/unit/BankRateSyncTest.php" line="130" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="4" time="0.004055"/>
-    <testcase name="testSkipsBadCharges" file="/app/tests/unit/BankRateSyncTest.php" line="143" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="2" time="0.004182"/>
-    <testcase name="testCalculatesFlatPercentFreeAndCaps" file="/app/tests/unit/BankRateSyncTest.php" line="157" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="6" time="0.071686"/>
-    <testcase name="testSampleFeedChargesAreAllUsable" file="/app/tests/unit/BankRateSyncTest.php" line="171" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="13" time="0.133900"/>
+  <testsuite name="CLI Arguments" tests="14" assertions="63" errors="0" failures="0" skipped="0" time="0.046508">
+    <testsuite name="BankRateSyncTest" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\BankRateSyncTest.php" tests="12" assertions="60" errors="0" failures="0" skipped="0" time="0.036089">
+      <testcase name="testMapsNestedFields" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\BankRateSyncTest.php" line="35" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="7" time="0.021884"/>
+      <testcase name="testFractionRatesBecomePercent" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\BankRateSyncTest.php" line="51" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="1" time="0.001016"/>
+      <testcase name="testUnknownTypeAndMissingCodeFallBack" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\BankRateSyncTest.php" line="61" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="4" time="0.001202"/>
+      <testcase name="testRejectsItemsWithoutBankNameOrValidRate" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\BankRateSyncTest.php" line="74" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="4" time="0.000729"/>
+      <testcase name="testFixedBankNameForSingleBankFeeds" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\BankRateSyncTest.php" line="84" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="1" time="0.000706"/>
+      <testcase name="testStripsMarkupFromFeedText" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\BankRateSyncTest.php" line="91" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="2" time="0.001882"/>
+      <testcase name="testDigFollowsDotPathsAndListIndexes" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\BankRateSyncTest.php" line="102" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="3" time="0.000872"/>
+      <testcase name="testBundledSampleFeedMapsEveryProduct" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\BankRateSyncTest.php" line="112" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="13" time="0.002397"/>
+      <testcase name="testMapsChargesThroughTypeAndChannelMaps" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\BankRateSyncTest.php" line="130" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="4" time="0.000939"/>
+      <testcase name="testSkipsBadCharges" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\BankRateSyncTest.php" line="143" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="2" time="0.001025"/>
+      <testcase name="testCalculatesFlatPercentFreeAndCaps" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\BankRateSyncTest.php" line="157" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="6" time="0.001098"/>
+      <testcase name="testSampleFeedChargesAreAllUsable" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\BankRateSyncTest.php" line="171" class="BankRateSyncTest" classname="BankRateSyncTest" assertions="13" time="0.002339"/>
+    </testsuite>
+    <testsuite name="HealthTest" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\HealthTest.php" tests="2" assertions="3" errors="0" failures="0" skipped="0" time="0.010419">
+      <testcase name="testIsDefinedAppPath" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\HealthTest.php" line="12" class="HealthTest" classname="HealthTest" assertions="1" time="0.001006"/>
+      <testcase name="testBaseUrlHasBeenSet" file="E:\Work\Codebase\Liquidity-Buddy\LiquidityBuddy\tests\unit\HealthTest.php" line="17" class="HealthTest" classname="HealthTest" assertions="2" time="0.009413"/>
+    </testsuite>
   </testsuite>
 </testsuites>

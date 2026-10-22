@@ -76,7 +76,6 @@ $(document).ready(function(){
     //     runningBalance = Number($('#internal #transaction-type').val() == 'expense') ? $('#internal #current-running-balance').val().replace(',','').replace('.00','') : $('#internal #to-running-balance').val().replace(',','').replace('.00','');
         
     //     if(runningBalance < Number($('#amount').val())){
-    //         console.log('Transaction exceeded');
     //         return;
     //     }
     
@@ -92,22 +91,15 @@ $(document).ready(function(){
     //         success: function (response) {
     //             apiresponse = $.parseJSON(response);
     //             if(apiresponse.success){
-    //                 console.log('No issues');
-    //                 console.log(apiresponse.data.fromTransactionChanges);
     //                 // $('#current-running-balance').val(apiresponse.data.fromTransactionChanges);
     //                 // $('#to-running-balance').val(apiresponse.data.toTransactionChanges);
 
     //             }else{
     //                 $('#common-error').removeClass('d-none');
     //                 $('#common-error').text('* '+apiresponse.message);    
-    //                 console.log('Account issues');
-    //                 console.log(apiresponse.message);
     //             }
     //         },
     //         error: function (xhr, ajaxOptions, thrownError) {
-    //             console.log(xhr)
-    //             console.log(ajaxOptions)
-    //             console.log(thrownError)
     //         }
 
     //     });

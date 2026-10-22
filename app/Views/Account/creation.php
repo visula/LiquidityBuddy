@@ -110,9 +110,17 @@
                                         </datalist>
                                     </div>
                                 </div>
+                                
+                                <div class="col-12 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="link-card-check">
+                                        <label class="form-check-label" for="link-card-check">This account uses a debit card from another account</label>
+                                    </div>
+                                </div>
                                 <div class="col-12 mb-2 bank-only">
                                     <small class="text-muted" id="bank-product-hint">Pick the bank product to get its interest rate and its withdrawal and transfer charges from <a href="<?= base_url('bank-rates') ?>">Bank Rates</a>.</small>
                                 </div>
+                                
                                 <div class="col-12 mb-2 d-none" id="auto-interest-row">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="new-auto-interest">
@@ -143,6 +151,19 @@
                                         <input type="text" class="form-control" placeholder="Last 4 digits" id="method-reference" maxlength="4" inputmode="numeric">
                                         <label for="method-reference">Card last 4 digits (optional)</label>
                                     </div>
+                                </div>
+                                <div class="col-12 mb-3 d-none" id="link-card-select-col">
+                                    <div class="form-floating">
+                                        <select class="form-select" id="linked-card-list">
+                                            <option value="">Choose a card</option>
+                                            <?php foreach (($paymentMethodInfo ?? []) as $method) {
+                                                if (! in_array($method['PaymentMethodType'] ?? '', ['DEBIT_CARD', 'CREDIT_CARD'], true) || !empty($method['PaymentMethodLinkedFrom']) || ($method['PaymentMethodShowInDropdown'] ?? 'Y') === 'N') { continue; } ?>
+                                                <option value="<?= esc($method['PaymentMethodSessionID'], 'attr') ?>"><?= esc($method['PaymentMethodLabel']) ?> (<?= esc($method['AccountName']) ?>)</option>
+                                            <?php } ?>
+                                        </select>
+                                        <label for="linked-card-list">Debit card of another account</label>
+                                    </div>
+                                    <small class="text-muted">The account pays from its own balance, as a debit. The other account's card limit and debt are not used.</small>
                                 </div>
                                 <div class="col-6 mb-3 d-none" id="credit-limit-input">
                                     <div class="form-floating">

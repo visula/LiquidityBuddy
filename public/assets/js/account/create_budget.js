@@ -2,7 +2,6 @@ if (!window.__budget_initialized__) {
     window.__budget_initialized__ = true;
     $(document).ready(function () {
         $(document).on('focusin','#budget-name',function(){
-            console.log('focusin');
             $('.error-message').html("&nbsp;");
         });
         
@@ -78,7 +77,6 @@ if (!window.__budget_initialized__) {
                         budget_id: session_id,
                     },
                     success: function (data) {
-                        console.log(data);
                         window.location.reload();
                     }
                 });

@@ -2,7 +2,6 @@ if (!window.__account_group_initialized__) {
     window.__account_group_initialized__ = true;
     $(document).ready(function () {
         $(document).on('focusin','#account-group-name',function(){
-            console.log('focusin');
             $('.error-message').html("&nbsp;");
         });
         
@@ -72,7 +71,6 @@ if (!window.__account_group_initialized__) {
                         account_group_id: session_id,
                     },
                     success: function (data) {
-                        console.log(data);
                         window.location.reload();
                     }
                 });

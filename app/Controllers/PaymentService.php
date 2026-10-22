@@ -111,6 +111,7 @@ class PaymentService extends AccountService
             ->select('pm.sessionid AS PaymentMethodSessionID, pm.name AS PaymentMethodName, pm.type AS PaymentMethodType,
                       pm.reference AS PaymentMethodReference, pm.creditlimit AS PaymentMethodCreditLimit,
                       pm.isdefault AS PaymentMethodIsDefault, pm.showindropdown AS PaymentMethodShowInDropdown,
+                      pm.linkedfrom AS PaymentMethodLinkedFrom,
                       a.sessionid AS AccountSessionID, a.name AS AccountName,
                       a.currentbalance AS AccountCurrentBalance', false)
             ->join('account a', 'a.sessionid = pm.accountsessionid')
@@ -274,7 +275,8 @@ class PaymentService extends AccountService
     {
         $builder = $this->db()->table('paymentmethod pm')
             ->join('account a', 'a.sessionid = pm.accountsessionid AND a.usersessionid = pm.usersessionid')
-            ->where(['pm.usersessionid' => $userID, 'pm.type' => 'DEBIT_CARD', 'pm.status' => 'A']);
+            ->where(['pm.usersessionid' => $userID, 'pm.type' => 'DEBIT_CARD', 'pm.status' => 'A', 'pm.linkedfrom' => null])
+            ->where('pm.linkedfrom', null); // a linked card belongs to another account, so it doesn't count here
 
         if ($accountID !== '') {
             $builder->where('pm.accountsessionid', $accountID);
@@ -289,6 +291,57 @@ class PaymentService extends AccountService
         }
 
         return (int) $builder->countAllResults();
+    }
+
+    /**
+     * Let $accountID pay with a debit card that belongs to another account. The link is a
+     * method row for $accountID that points at the card's own method, so payments with it
+     * come out of $accountID. Only debit cards are linked: a credit card's limit belongs to
+     * the account that owes it.
+     */
+    protected function linkDebitCardToAccount(string $userID, string $accountID, string $cardMethodID)
+    {
+        $card = $this->db()->table('paymentmethod')
+            ->where(['sessionid' => $cardMethodID, 'usersessionid' => $userID, 'status' => 'A'])
+            ->get()->getRowArray();
+
+        // A credit card can be linked too. The linked account pays with it as a debit: its own balance is used, not the card's limit or debt.
+        if (empty($card) || ! in_array($card['type'], ['DEBIT_CARD', 'CREDIT_CARD'], true) || $card['linkedfrom'] !== null) {
+            return $this->paymentError('0092', 'Payment Method', 'Pick a card that belongs to another account.');
+        }
+
+        if ($card['accountsessionid'] === $accountID) {
+            return $this->paymentError('0092', 'Payment Method', 'That card already belongs to this account.');
+        }
+
+        $alreadyLinked = $this->db()->table('paymentmethod')
+            ->where(['accountsessionid' => $accountID, 'linkedfrom' => $cardMethodID, 'status' => 'A'])
+            ->countAllResults();
+
+        if ($alreadyLinked > 0) {
+            return $this->paymentError('0092', 'Payment Method', 'This account already uses that card.');
+        }
+
+        $now = time();
+        $this->db()->table('paymentmethod')->insert([
+            'accountsessionid' => $accountID,
+            'usersessionid'    => $userID,
+            'name'             => $card['name'],
+            'type'             => 'DEBIT_CARD',
+            'reference'        => $card['reference'],
+            'creditlimit'      => '0.00',
+            'isdefault'        => 'Y',
+            'showindropdown'   => 'Y',
+            'linkedfrom'       => $cardMethodID,
+            'status'           => 'A',
+            'createddatetime'  => $now,
+            'updateddatetime'  => $now,
+        ]);
+
+        $row = $this->db()->table('paymentmethod')->select('sessionid')
+            ->where('id', $this->db()->insertID())->get()->getRowArray();
+
+        return ['success' => true, 'PaymentMethodSessionID' => $row['sessionid']];
     }
 
     protected function accountGroupTypeOf(string $groupID): string

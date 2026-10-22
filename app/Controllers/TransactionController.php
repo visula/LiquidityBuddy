@@ -32,16 +32,13 @@ class TransactionController extends PaymentService
         $data['Head'] = $this->commonHead();
         $data['CurrentID'] = 'transaction-proccesss';
 
-        // $this->limit = 5;
         $accountDetails = $this->activeAccountListAccessModule($this->userAccess());
-        // $this->limit = 0;
 
         // TODO:: Error Handling Method
         if(isset($accountDetails['error_id'])){
 
             // TODO:: Change the route the accout create URL
             return $this->errorHandleLogAndPageRedirection($accountDetails, '/account/list');
-            // return redirect()->to(base_url('/account/list'))->with('msg', $accountDetails['error_message']);
         }
 
         if(!isset($accountDetails[0])){
@@ -52,16 +49,13 @@ class TransactionController extends PaymentService
 
 
         // TODO:: link user default user
-        // $this->limit = 5;
         $budgetDetails = $this->budgetList($this->userAccess());
-        // $this->limit = 0;
 
         // TODO:: Error Handling Method
         if(isset($budgetDetails['error_id'])){
 
             // TODO:: Change the route the accout create URL
             return $this->errorHandleLogAndPageRedirection($budgetDetails, '/account/list');
-            // return redirect()->to(base_url('/account/list'))->with('msg', $accountDetails['error_message']);
         }
 
         if(!isset($budgetDetails[0])){
@@ -74,14 +68,11 @@ class TransactionController extends PaymentService
         $this->limit = 5;
         $shopDetails = $this->userShopList($this->userAccess());
         $shops = [];
-        // $this->limit = 0;
 
         // TODO:: Error Handling Method
         if(!isset($shopDetails['error_id'])){
 
             // TODO:: Change the route the accout create URL
-            // return $this->errorHandleLogAndPageRedirection($shopDetails, '/account/list');
-            // return redirect()->to(base_url('/account/list'))->with('msg', $accountDetails['error_message']);
 
             if(!isset($shopDetails[0])){
                 $shops[] = $shopDetails;
@@ -93,8 +84,6 @@ class TransactionController extends PaymentService
                 $shopIds = array_column($shops, 'ShopSessionID');
                 // TODO:: link user default user
                 $this->limit = ($this->limit - count($shops));
-                // var_dump($shopIds);
-                // die;
                 $otherShopDetails = $this->otherShopList($shopIds);
                 
                 $this->limit = 0;
@@ -103,8 +92,6 @@ class TransactionController extends PaymentService
                 if(!isset($otherShopDetails['error_id'])){
 
                     // TODO:: Change the route the accout create URL
-                    // return $this->errorHandleLogAndPageRedirection($shopDetails, '/account/list');
-                    // return redirect()->to(base_url('/account/list'))->with('msg', $accountDetails['error_message']);
 
                     if(!isset($otherShopDetails[0])){
                         $shops[] = $otherShopDetails;
@@ -122,8 +109,6 @@ class TransactionController extends PaymentService
             if(!isset($otherShopDetails['error_id'])){
 
                 // TODO:: Change the route the accout create URL
-                // return $this->errorHandleLogAndPageRedirection($shopDetails, '/account/list');
-                // return redirect()->to(base_url('/account/list'))->with('msg', $accountDetails['error_message']);
 
                 if(!isset($otherShopDetails[0])){
                     $shops[] = $otherShopDetails;
@@ -143,8 +128,6 @@ class TransactionController extends PaymentService
 
             // TODO:: Change the route the accout create URL
             $stackholderDetails = [];
-            // return $this->errorHandleLogAndPageRedirection($stackholderDetails, '/account/list');
-            // return redirect()->to(base_url('/account/list'))->with('msg', $accountDetails['error_message']);
         }
 
         if(!isset($stackholderDetails[0])){
@@ -153,7 +136,6 @@ class TransactionController extends PaymentService
             $stackholders = $stackholderDetails;
         }
 
-        // $data['accountInfo'] = $accounts;
         $data['budgetInfo'] = $budgets;
         $data['stackholderInfo'] = $stackholders;
         $data['shopInfo'] = $shops;
@@ -182,7 +164,6 @@ class TransactionController extends PaymentService
         $data['dued_trans_content'] = view('Transaction/dued_trans_module', $data);
         $data['other_trans_content'] = view('Transaction/other_trans_module', $data);
         $data['purchase_content'] = view('Transaction/purchase_module', $data);
-        // $data['account_list_content'] = view('Account/commonModule/account_info_module', $data['accountInfo']);
         $data['transaction_proccess_container'] = view('Transaction/transaction_proccess_module', $data);
         return view('Transaction/create', $data);
     }

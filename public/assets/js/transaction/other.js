@@ -53,14 +53,10 @@ $(document).ready(function(){
 
         if($(`#scheduled-payment-period`).val() == 0 || $(`#scheduled-payment-period`).val() == ''){
             $(`#scheduled-payment-period`).val(1);
-            console.log('Test');
         }
 
         partial_amount = (LB.amountValue($(`#${id} #amount`).val()) / $(`#scheduled-payment-period`).val());
 
-        console.log($(`#${id} #amount`).val());
-        console.log($(`#scheduled-payment-period`).val());
-        console.log(partial_amount);
 
         $('#partialamount').val(partial_amount.toFixed(2));
 

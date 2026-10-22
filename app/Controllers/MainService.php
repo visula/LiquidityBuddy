@@ -171,30 +171,6 @@ class MainService extends BlueprintService
         }
     }
 
-    public function FormattedStatus($status)
-    {
-        // switch to handle the status
-        switch ($status) {
-            case 'A':
-                # Active Status
-                return 'Active';
-            case 'D':
-                # Deactive Status
-                return 'Dective';
-            case 'L':
-                # Locked Status
-                return 'Locked';
-            case 'I':
-                # Inactive Status
-                return 'Inactive';
-            case 'C':
-                # Cancelled Status
-                return 'Cancelled';
-            default:
-                # Default Status
-                return 'Default';
-        }
-    }
     
     public function passwordFormatHandler($password)
     {
@@ -211,38 +187,6 @@ class MainService extends BlueprintService
 
     }
  
-    public function contactNoFormatHandler($contactNo)
-    {
-        if(strlen($contactNo) < 9){
-            return $error = [
-                        'error_id' => '0015',
-                        'category' => 'Format_Issue',
-                        'error_category' => 'Contact No Length',
-                        'error_message'  => 'Contact no length should be higher than 9'
-                    ];
-        }
-
-        if(strlen($contactNo) > 16){
-            return $error = [
-                        'error_id' => '0016',
-                        'category' => 'Format_Issue',
-                        'error_category' => 'Contact No Length',
-                        'error_message'  => 'Contact no length should be lower than 16'
-                    ];
-        }
-
-        if(!is_numeric($contactNo)){
-                    return $error = [
-                    'error_id' => '0017',
-                    'category' => 'Format_Issue',
-                    'error_category' => 'Contact No Format',
-                    'error_message'  => 'Contact no cannot have string values'
-                ];
-        }
-
-        return $response = ['success' => true];
-
-    }
 
     public function handleRequiredParameters($parameters, $requiredFeilds)
     {
@@ -261,14 +205,9 @@ class MainService extends BlueprintService
 
     public function imageFormat($imageFormat)
     {
-        // return base64_decode($imageFormat);
         return $imageFormat;
     }
     
-    public function periodicHandle($periodType)
-    {
-        return $this->periodic[$periodType];
-    }
 
     /**
      * Date of the $n-th period after $date (n = 0 returns $date itself).
@@ -390,35 +329,6 @@ class MainService extends BlueprintService
         return isset($response[0]) ? $response : [$response];
     }
 
-    public function getDaysofPeriodType($periodType)
-    {
-        switch ($periodType) {
-            case 'D':
-                # code...
-                return 1;
-                break;
-            
-            case 'W':
-                # code...
-                return 7;
-                break;
-            
-            case 'M':
-                # code...
-                return 28;
-                break;
-            
-            case 'A':
-                # code...
-                return 365;
-                break;
-            
-            default:
-                # code...
-                break;
-        }
-
-    }
 
     // Active Budget List Access of the User ID
     protected function budgetList($userID, $budgetID = '')
@@ -478,7 +388,6 @@ class MainService extends BlueprintService
         $condtionList = ['UserSessionID' => $userID];
         $feildList = ['ShopSessionID','ShopName','ShopDescription'];
         $organizerList = ['orderBy' => ['ShopAccessOrderAccessCount' => 'DESC']];
-        // $organizerList = [];
 
         if($shopID != ''){
             $condtionList['ShopSessionID'] = $shopID;

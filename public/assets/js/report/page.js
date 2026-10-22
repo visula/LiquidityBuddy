@@ -32,10 +32,7 @@ if (!window.__page_initialized__) {
                 url: base_url + sub_url,
                 data: data,
                 success: function (response) {
-                    console.log(response);
                     data = JSON.parse(response);
-                    console.log(data['data']['error_message']);
-                    console.log(data['success']);
                     if(data['success'] == false){
                         $('#report-container-data').html("<p class='error'>"+data['data']['error_message']+"</p>");
                     }else{
@@ -48,9 +45,6 @@ if (!window.__page_initialized__) {
                     }
                 },
                 error: function (xhr, ajaxOptions, thrownError) {
-                    console.log(xhr)
-                    console.log(ajaxOptions)
-                    console.log(thrownError)
                 }
             });
         });

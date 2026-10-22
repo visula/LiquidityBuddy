@@ -31,9 +31,7 @@ class AccountController extends PaymentService
         $data['CurrentID'] = 'main-menu';
 
         // TODO:: link user default user
-        // $this->limit = 5;
         $accountDetails = $this->activeAccountListAccessModule($this->userAccess());
-        // $this->limit = 0;
 
         // TODO:: Error Handling Method
         // No accounts yet (e.g. a new user): start on Add Account. Sign-up already
@@ -58,7 +56,6 @@ class AccountController extends PaymentService
 
             // TODO:: Change the route the accout create URL
             return $this->errorHandleLogAndPageRedirection($transactionDetails, $this->init_trigger_url);
-            // return redirect()->to(base_url('/account/list'))->with('msg', $accountDetails['error_message']);
         }
 
         if(!isset($transactionDetails[0])){
@@ -68,16 +65,13 @@ class AccountController extends PaymentService
         }
 
         // TODO:: link user default user
-        // $this->limit = 5;
         $budgetDetails = $this->budgetList($this->userAccess());
-        // $this->limit = 0;
 
         // TODO:: Error Handling Method
         if(isset($budgetDetails['error_id'])){
 
             // TODO:: Change the route the accout create URL
             return $this->errorHandleLogAndPageRedirection($budgetDetails, $this->init_trigger_url);
-            // return redirect()->to(base_url('/account/list'))->with('msg', $accountDetails['error_message']);
         }
 
         if(!isset($budgetDetails[0])){
@@ -89,7 +83,6 @@ class AccountController extends PaymentService
         // TODO:: link user default user
         $this->limit = 5;
         $shopDetails = $this->userShopList($this->userAccess());
-        // $this->limit = 0;
 
         // TODO:: Error Handling Method
         if(isset($shopDetails['error_id'])){
@@ -101,8 +94,6 @@ class AccountController extends PaymentService
         }
 
         // TODO:: Change the route the accout create URL
-        // return $this->errorHandleLogAndPageRedirection($shopDetails, '/account/list');
-        // return redirect()->to(base_url('/account/list'))->with('msg', $accountDetails['error_message']);
 
         if(!isset($shopDetails[0])){
             $shops[] = $shopDetails;
@@ -114,8 +105,6 @@ class AccountController extends PaymentService
             $shopIds = array_column($shops, 'ShopSessionID');
             // TODO:: link user default user
             $this->limit = ($this->limit - count($shops));
-            // var_dump($shopIds);
-            // die;
             $otherShopDetails = $this->otherShopList($shopIds);
             
             $this->limit = 0;
@@ -124,8 +113,6 @@ class AccountController extends PaymentService
             if(!isset($otherShopDetails['error_id'])){
 
                 // TODO:: Change the route the accout create URL
-                // return $this->errorHandleLogAndPageRedirection($shopDetails, '/account/list');
-                // return redirect()->to(base_url('/account/list'))->with('msg', $accountDetails['error_message']);
 
                 if(!isset($otherShopDetails[0])){
                     $shops[] = $otherShopDetails;
@@ -147,8 +134,6 @@ class AccountController extends PaymentService
 
             // TODO:: Change the route the accout create URL
             $stackholderDetails = [];
-            // return $this->errorHandleLogAndPageRedirection($stackholderDetails, '/account/list');
-            // return redirect()->to(base_url('/account/list'))->with('msg', $accountDetails['error_message']);
         }
 
         if(!isset($stackholderDetails[0])){
@@ -157,7 +142,6 @@ class AccountController extends PaymentService
             $stackholders = $stackholderDetails;
         }
 
-        // $data['accountInfo'] = $accounts;
         $data['budgetInfo'] = $budgets;
         $data['stackholderInfo'] = $stackholders;
         // $data['transactionInfo']['$transactions'] = $transactions;
@@ -229,7 +213,6 @@ class AccountController extends PaymentService
             
             // Redirect to account page
             return $this->errorHandleLogAndPageRedirection($transactionDetails, $this->init_trigger_url);
-            // return redirect()->to(base_url('/account/list'))->with('msg', $transactionDetails['error_message']);
         }
 
         // TODO:: link user default user
@@ -315,9 +298,7 @@ class AccountController extends PaymentService
         $data['CurrentID'] = 'add-new-account';
 
         // TODO:: link user default user
-        // $this->limit = 5;
         $accountGroupDetails = $this->activeAccountGroupsListAccessModule($this->userAccess());
-        // $this->limit = 0;
 
         // An account needs a group: without any, create one first
         if(isset($accountGroupDetails['error_id'])){
@@ -340,16 +321,12 @@ class AccountController extends PaymentService
         $data['productFees'] = $bank->fees(array_column($data['bankProducts'], 'sessionid'));
 
         // TODO:: link user default user
-        // $this->limit = 0;
         $accountDetails = $this->activeAccountListAccessModule($this->userAccess());
-        // $this->limit = 0;
 
         // TODO:: Error Handling Method
         if(!isset($accountDetails['error_id'])){
 
             // TODO:: Change the route the accout create URL
-            // return $this->errorHandleLogAndPageRedirection($accountDetails, '/account/list');
-            // return redirect()->to(base_url('/account/list'))->with('msg', $accountDetails['error_message']);
 
             if(!isset($accountDetails[0])){
                 $accounts[] = $accountDetails;
@@ -370,6 +347,9 @@ class AccountController extends PaymentService
         }else{
             $data['account_list_content'] = '';
         }   
+
+        // Existing debit cards a new account can be linked to
+        $data['paymentMethodInfo'] = $this->paymentMethodList($this->userAccess());
 
         return view('Account/creation', $data);
     }
@@ -417,6 +397,13 @@ class AccountController extends PaymentService
         $bankName = (string) ($request_data['bank_name'] ?? '');
         // Optional bank account number, for reference only (cash has none)
         $accountNumber = ($accountType === 'CASH') ? '' : mb_substr(trim(strip_tags((string) ($request_data['account_number'] ?? ''))), 0, 40);
+
+        // An existing debit card of another account this account pays with, instead of its own method
+        $linkedMethodID = trim((string) ($request_data['linked_method_id'] ?? ''));
+
+        if($linkedMethodID !== '' && !$this->isSessionID($linkedMethodID)){
+            return $this->apiError($this->paymentError('0092', 'Payment Method', 'Pick a debit card that belongs to another account.'));
+        }
         $autoInterest = filter_var($request_data['auto_interest'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         if($productID !== ''){
@@ -431,7 +418,7 @@ class AccountController extends PaymentService
             }
         }
 
-        $result = $this->runAtomic(function () use ($userID, $accountName, $groupID, $amount, $methodInput, $accountType, $productID, $bankName, $autoInterest, $accountNumber) {
+        $result = $this->runAtomic(function () use ($userID, $accountName, $groupID, $amount, $methodInput, $accountType, $productID, $bankName, $autoInterest, $accountNumber, $linkedMethodID) {
             $accountCreation = $this->accountInitProccess($userID, $accountName, $groupID, $amount);
 
             if(isset($accountCreation['error_id'])){
@@ -439,7 +426,10 @@ class AccountController extends PaymentService
             }
 
             $accountID = $accountCreation['AccountSessionID'];
-            $method = $this->paymentMethodCreateProccess($userID, $accountID, $methodInput);
+            // A linked card replaces the account's own method: the account pays with the other account's card
+            $method = ($linkedMethodID !== '')
+                ? $this->linkDebitCardToAccount($userID, $accountID, $linkedMethodID)
+                : $this->paymentMethodCreateProccess($userID, $accountID, $methodInput);
 
             if(isset($method['error_id'])){
                 return $method;
@@ -563,7 +553,6 @@ class AccountController extends PaymentService
             $response = $this->errorHandleforAPIResponses($accountUpdate);
             echo $response;
             exit;
-            // return $accountUpdate;
         }
 
         if(array_key_exists('account_number', $request_data)){
@@ -621,7 +610,6 @@ class AccountController extends PaymentService
             $response = $this->errorHandleforAPIResponses($accountDelete);
             echo $response;
             exit;
-            // return $accountDelete;
         }
 
         $this->deactivateAccountPaymentMethods($this->userAccess(), $accountID);
@@ -662,14 +650,11 @@ class AccountController extends PaymentService
         $data['CurrentID'] = 'account-group';
 
         // TODO:: link user default user
-        // $this->limit = 10;
         $accountGroupDetails = $this->activeAccountGroupsListAccessModule($this->userAccess());
-        // $this->limit = 0;
 
         // TODO:: Error Handling Method
         if(isset($accountGroupDetails['error_id'])){
             // TODO:: Change the route the accout create URL
-            // return $this->errorHandleLogAndPageRedirection($accountGroupDetails, $this->init_trigger_url);
             if($accountGroupDetails['error_id'] == '0004'){
                 # code...
                 $data['account_group_details_container'] = '';
@@ -715,7 +700,6 @@ class AccountController extends PaymentService
             $response = $this->errorHandleforAPIResponses($accountGroupCreate);
             echo $response;
             exit;
-            // return $accountGroupCreate;
         }
 
         $response = [

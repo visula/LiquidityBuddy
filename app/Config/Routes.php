@@ -36,7 +36,6 @@ $routes->get('/user/logout', 'GoogleLoginController::logout');
 // Account informations
 $routes->get('/account/list', 'AccountController::accountList');
 $routes->get('/account/add', 'AccountController::addAccount');
-$routes->get('/account/change', 'AccountController::changeAccount');
 $routes->get('/budget/add', 'AccountController::addBudget');
 $routes->get('/account/info/(:any)', 'AccountController::accountPage/$1');
 

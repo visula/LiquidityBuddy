@@ -81,7 +81,6 @@ $(document).ready(function(){
         var finalPrice = 0;
 
         for (let index = 1; index <= rowCount; index++) {
-            console.log(index);
             if($(`#name-${index}`).val() == ''){
                 $(`#error-msg-${index} .error`).text('* Name is required');
                 $(`#error-msg-${index}`).removeClass('d-none');
@@ -107,7 +106,6 @@ $(document).ready(function(){
             $(`#removeRowBtn-${index}`).attr('data-final-price', finalPrice.toFixed(2));
                     
             updateTotalAmount();
-            console.log(`Row ${index} Final Price: ${finalPrice.toFixed(2)}`);
         }
     }
 

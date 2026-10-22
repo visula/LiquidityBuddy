@@ -28,6 +28,12 @@ $(document).ready(function(){
             return;
         }
 
+        // Ticked but no card picked: say so, rather than silently creating the account without the link
+        if ($('#link-card-check').is(':checked') && !$('#linked-card-list').val()) {
+            $('.error-message').text('* Choose the debit card of another account, or untick the box');
+            return;
+        }
+
         LB.post('js-request/account/create', {
             groupID: $('#account-group-list').val(),
             accountName: $('#account-name').val(),
@@ -35,6 +41,7 @@ $(document).ready(function(){
             method_type: $('#method-type').val(),
             method_name: $('#method-name').val(),
             method_reference: $('#method-reference').val(),
+            linked_method_id: $('#link-card-check').is(':checked') ? ($('#linked-card-list').val() || '') : '',
             credit_limit: $('#credit-limit').val(),
             account_type: $typeSection.find('#account-type').val(),
             bank_name: $typeSection.find('#bank-name').val(),
@@ -99,6 +106,21 @@ $(document).ready(function(){
     }
 
     // Credit limit only applies to credit cards
+    // Linked card: the account has no card of its own, so its own method fields are hidden
+    $('#link-card-check').on('change', function () {
+        var linked = $(this).is(':checked');
+        $('#link-card-select-col').toggleClass('d-none', !linked);
+        $('#method-type, #method-name, #method-reference').closest('.col-6').toggleClass('d-none', linked);
+        if (linked) {
+            $('#credit-limit-input').addClass('d-none');
+        } else {
+            $('#method-type').trigger('change');
+        }
+    });
+
+    // Apply the checkbox state on page load, so the fields match it before the user touches anything
+    $('#link-card-check').trigger('change');
+
     $('#method-type').on('change', function () {
         $('#credit-limit-input').toggleClass('d-none', $(this).val() !== 'CREDIT_CARD');
     });
@@ -164,7 +186,6 @@ $(document).ready(function(){
                     account_id: session_id,
                 },
                 success: function (data) {
-                    console.log(data);
                     window.location.reload();
                 }
             });
@@ -172,13 +193,13 @@ $(document).ready(function(){
     });
 
     function resetAccountForm(){
-        console.log($('#account-group-list').data('default-value'));
         $('#create-account-btn').removeClass('d-none');
         $('#update-account-btn').addClass('d-none');
         $('#default-method-section').removeClass('d-none');
         $('#account-type-section').removeClass('d-none');
         $('#account-name').val('');
         $('#account-number').val('');
+        $('#link-card-check').prop('checked', false).trigger('change');
         $('#amount').val(0);
         $('#account-group-list').val($('#account-group-list').data('default-value'));
         $('.error-message').html("&nbsp;");

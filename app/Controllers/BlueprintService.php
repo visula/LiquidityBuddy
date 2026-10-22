@@ -37,8 +37,6 @@ class BlueprintService extends BaseController
             $functionName = $table.'Structure';
             
             // TODO:: handle the function to check if method existing and if not return an Error
-            // if(method_exists('AdminTraits',$functionName)){
-            // }
             
             # Initate table structures 
             $this->$functionName();
@@ -313,10 +311,6 @@ class BlueprintService extends BaseController
         return $this->request->getPost();
     }
 
-    public function handlePOSTAPIBodyDataList()
-    {
-        return $this->request->getJson('request_data');
-    }
 
     public function errorHandleLogAndPageRedirection($errorDataList, $redirect = '')
     {
@@ -374,12 +368,5 @@ class BlueprintService extends BaseController
         return $jwt;
     }
 
-    public function decodeJWT($jwt){
-        $secretKey = $this->getSecretKey();
-        
-        $decoded = JWT::decode($jwt, new \Firebase\JWT\Key($secretKey, 'HS256'));
-
-        return $decoded;
-    }
 
 }

@@ -28,16 +28,13 @@
             $accountService = new AccountService();
 
             if($transactonType == 'income' || $transactonType == 'expense'){
-                // $this->limit = 5;
                 $accountDetails = $accountService->activeAccountListAccessModule($this->userAccess());
-                // $this->limit = 0;
 
                 // TODO:: Error Handling Method
                 if(isset($accountDetails['error_id'])){
 
                     // TODO:: Change the route the accout create URL
                     return $this->errorHandleLogAndPageRedirection($accountDetails, '/account/list');
-                    // return redirect()->to(base_url('/account/list'))->with('msg', $accountDetails['error_message']);
                 }
 
                 if(!isset($accountDetails[0])){
@@ -51,9 +48,7 @@
 
             if($transactonType == 'budget'){
                 // TODO:: link user default user
-                // $this->limit = 5;
                 $budgetDetails = $this->budgetList($this->userAccess());
-                // $this->limit = 0;
 
                 // TODO:: Error Handling Method
                 if(isset($budgetDetails['error_id'])){
