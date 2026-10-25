@@ -1,209 +1,259 @@
-$(document).ready(function(){
-    $('#account-name').on('focusin',function(){
-        $('.error-message').html("&nbsp;");
-    });
-    
-    $('#amount').on('focusout',function(){
-        //  TODO:: currently no decimal places are allowed, need to fix this for 2 decimal places
-        $(this).val().replace(/[^0-9]/g, '');
-        
-        if($(this).val() == ''){$(this).val(0);}
+$(document).ready(function () {
+    var $kind = $('#account-kind');
+    var $bankType = $('#account-type');
+    var $product = $('#bank-product');
+    var $parent = $('#parent-account');
+    var editingID = '';
 
+    function kind() { return $kind.val(); }
+    function isBank() { return kind() === 'BANK'; }
+    function cardMode() { return $('input[name="card-mode"]:checked').val() || 'none'; }
+
+    $('#account-name').on('focusin', function () {
+        $('.error-message').html('&nbsp;');
+    });
+
+    $('#amount').on('focusout', function () {
+        if ($(this).val() == '') { $(this).val(0); }
         $('#amount').val(LB.amountValue($(this).val()).toFixed(2));
-        
-        if($(this).val() != '' && $(this).val() != '0.00'){
-            $('.error-message').html("&nbsp;");
+
+        if ($(this).val() != '' && $(this).val() != '0.00') {
+            $('.error-message').html('&nbsp;');
         }
     });
 
-    // create account click
-    $('#create-account-btn').on('click',function(){
-        if($('#account-name').val() == ''){
-            $('.error-message').text('* Name is required');
-            return;
-        }
+    // ---- Kind: bank shows the bank details and card; cash and other show neither ----
+    function syncKind() {
+        var bank = isBank();
+        $('#bank-section, #card-section').toggleClass('d-none', !bank);
+        $('#account-number-col').toggleClass('d-none', !bank);
+        syncProduct();
+        syncCard();
+    }
 
-        if($('#amount').val() == ''){
-            $('.error-message').text('* Amount is required');
-            return;
-        }
+    // Only products of the chosen bank product type can be picked
+    function syncProduct() {
+        var type = $bankType.val();
 
-        // Ticked but no card picked: say so, rather than silently creating the account without the link
-        if ($('#link-card-check').is(':checked') && !$('#linked-card-list').val()) {
-            $('.error-message').text('* Choose the debit card of another account, or untick the box');
-            return;
-        }
-
-        LB.post('js-request/account/create', {
-            groupID: $('#account-group-list').val(),
-            accountName: $('#account-name').val(),
-            amount: $('#amount').val(),
-            method_type: $('#method-type').val(),
-            method_name: $('#method-name').val(),
-            method_reference: $('#method-reference').val(),
-            linked_method_id: $('#link-card-check').is(':checked') ? ($('#linked-card-list').val() || '') : '',
-            credit_limit: $('#credit-limit').val(),
-            account_type: $typeSection.find('#account-type').val(),
-            bank_name: $typeSection.find('#bank-name').val(),
-            account_number: $('#account-number').val(),
-            bank_product_id: $typeSection.find('#bank-product').val(),
-            auto_interest: $typeSection.find('#new-auto-interest').is(':checked') ? 1 : 0
-        }, function () {
-            window.location.reload();
-        }, '.error-message', $(this));
-    });
-
-    // ---- Account type and bank product (Add Account form only) ----
-    var $typeSection = $('#account-type-section');
-
-    function syncAccountType() {
-        var type = $typeSection.find('#account-type').val();
-        var isCash = type === 'CASH';
-        var $product = $typeSection.find('#bank-product');
-
-        $typeSection.find('.bank-only').toggleClass('d-none', isCash);
-        $('#auto-interest-row').toggleClass('d-none', isCash || !$product.val());
-
-        // Only products of this type (savings, current ...) can be picked
         $product.find('option[data-type]').each(function () {
             var fits = $(this).attr('data-type') === type;
             $(this).prop('hidden', !fits).prop('disabled', !fits);
         });
         if ($product.find('option:selected').prop('disabled')) { $product.val(''); }
-
-        // Sensible default payment method for the type
-        var method = { CASH: 'CASH', CREDIT_CARD: 'CREDIT_CARD', SAVINGS: 'DEBIT_CARD', CURRENT: 'DEBIT_CARD' }[type] || 'BANK_TRANSFER';
-        $('#method-type').val(method).trigger('change');
         productHint();
     }
 
+    // A chosen product names the bank and may pay interest
     function productHint() {
-        var $option = $typeSection.find('#bank-product option:selected');
+        var $option = $product.find('option:selected');
         var $hint = $('#bank-product-hint');
-
-        var isCash = $typeSection.find('#account-type').val() === 'CASH';
 
         if (!$option.val()) {
             $hint.html($hint.data('default'));
             $('#auto-interest-row').addClass('d-none');
-            $('#bank-name-col').toggleClass('d-none', isCash);
-            $('#account-number-col').toggleClass('d-none', isCash);
             return;
         }
 
-        // The product names the bank; interest posting only matters when it pays interest
-        $('#bank-name-col').addClass('d-none');
-        $typeSection.find('#bank-name').val('');
+        var bank = $option.closest('optgroup').attr('label') || '';
+        if (bank && !$('#bank-name').val()) { $('#bank-name').val(bank); }
+
         $hint.text($option.attr('data-rate') + '% p.a.' + ($option.attr('data-fees') ? ' · Charges: ' + $option.attr('data-fees') : ''));
         $('#auto-interest-row').toggleClass('d-none', parseFloat($option.attr('data-rate')) <= 0);
     }
 
-    if ($typeSection.length) {
-        $('#bank-product-hint').data('default', $('#bank-product-hint').html());
-        $typeSection.on('change', '#account-type', syncAccountType);
-        $typeSection.on('change', '#bank-product', productHint);
-        syncAccountType();
+    // ---- Card: none, a card already in the system, or a new card ----
+    function syncCard() {
+        var mode = cardMode();
+        $('#card-existing-col').toggleClass('d-none', !(isBank() && mode === 'existing'));
+        $('#card-new-col').toggleClass('d-none', !(isBank() && mode === 'new'));
+        $('#credit-limit-input').toggleClass('d-none', !(mode === 'new' && $('#method-type').val() === 'CREDIT_CARD'));
     }
 
-    // Credit limit only applies to credit cards
-    // Linked card: the account has no card of its own, so its own method fields are hidden
-    $('#link-card-check').on('change', function () {
-        var linked = $(this).is(':checked');
-        $('#link-card-select-col').toggleClass('d-none', !linked);
-        $('#method-type, #method-name, #method-reference').closest('.col-6').toggleClass('d-none', linked);
-        if (linked) {
-            $('#credit-limit-input').addClass('d-none');
-        } else {
-            $('#method-type').trigger('change');
+    $kind.on('change', syncKind);
+    $bankType.on('change', syncProduct);
+    $product.on('change', productHint);
+    $('input[name="card-mode"]').on('change', syncCard);
+    $('#method-type').on('change', syncCard);
+
+    $('#bank-product-hint').data('default', $('#bank-product-hint').html());
+    syncKind();
+
+    // The form's values, the same for creating and for updating
+    function collect() {
+        var bank = isBank();
+        var data = {
+            groupID: $('#account-group-list').val(),
+            accountName: $('#account-name').val(),
+            amount: $('#amount').val(),
+            account_kind: kind(),
+            // cash and other accounts have no bank details, and get a plain default method
+            account_type: bank ? $bankType.val() : kind(),
+            method_type: kind() === 'CASH' ? 'CASH' : 'BANK_TRANSFER',
+            method_name: '',
+            method_reference: '',
+            credit_limit: '0',
+            linked_method_id: '',
+            bank_name: bank ? $('#bank-name').val() : '',
+            bank_product_id: bank ? $product.val() : '',
+            account_number: bank ? $('#account-number').val() : '',
+            parent_account_id: bank ? $parent.val() : '',
+            auto_interest: bank && $('#new-auto-interest').is(':checked') ? 1 : 0,
+            card_mode: bank ? cardMode() : 'none'
+        };
+
+        if (bank && cardMode() === 'existing') {
+            data.linked_method_id = $('#linked-card-list').val();
         }
-    });
 
-    // Apply the checkbox state on page load, so the fields match it before the user touches anything
-    $('#link-card-check').trigger('change');
+        if (bank && cardMode() === 'new') {
+            data.method_type = $('#method-type').val();
+            data.method_name = $('#method-name').val();
+            data.method_reference = $('#method-reference').val();
+            data.credit_limit = $('#credit-limit').val();
+        }
 
-    $('#method-type').on('change', function () {
-        $('#credit-limit-input').toggleClass('d-none', $(this).val() !== 'CREDIT_CARD');
-    });
+        return data;
+    }
 
-  
-    $(document).on('click', '.update-account-btn', function () {
-        session_id = $(this).data('account-id');
-        $('#update-account-btn').data('session-id',session_id);
-
-        $('#account-name').val($('#'+session_id+' .account-name').html());
-        $('#amount').val($('#'+session_id+' .account-balance').html().replace(/,/g, ''));
-        $('#account-group-list').val($('#'+session_id+' .account-group').data('account-group-id'));
-        $('#account-number').val($('#'+session_id).attr('data-account-number') || '');
-        $('#account-number-col').removeClass('d-none');
-
-        $('#create-account-btn').addClass('d-none');
-        $('#update-account-btn').removeClass('d-none');
-        $('#default-method-section').addClass('d-none');
-        $('#account-type-section').addClass('d-none');
-    })
-
-    $(document).on('click', '#cancel-account-btn', function () {            
-        resetAccountForm();
-    })
-
-    $(document).on('click', '#update-account-btn', function () {
-        if($('#account-name').val() == ''){
+    function validate() {
+        if ($('#account-name').val() == '') {
             $('.error-message').text('* Name is required');
-            return;
+            return false;
         }
 
-        session_id = $(this).data('session-id');
+        if ($('#amount').val() == '') {
+            $('.error-message').text('* Amount is required');
+            return false;
+        }
 
-        $.ajax({
-            type: "POST",
-            url: base_url + "/js-request/account/update",
-            data: {
-                account_id:session_id,
-                account_name:$('#account-name').val(),
-                account_group:$('#account-group-list').val(),
-                account_balance:$('#amount').val(),
-                account_number:$('#account-number').val(),
-            },
-            success: function (data) {
-                // window.location.reload();
-            }
-        });                
+        if (isBank() && cardMode() === 'existing' && !$('#linked-card-list').val()) {
+            $('.error-message').text('* Choose the card, or pick "No card for this account"');
+            return false;
+        }
+
+        return true;
+    }
+
+    // ---- Create ----
+    $('#create-account-btn').on('click', function () {
+        if (!validate()) { return; }
+
+        LB.post('js-request/account/create', collect(), function () {
+            window.location.reload();
+        }, '.error-message', $(this));
+    });
+
+    // ---- Edit an account from the list: load its details into the same sections as creation ----
+    $(document).on('click', '.update-account-btn', function () {
+        var accountID = $(this).data('account-id');
+
+        LB.post('js-request/account/details', { account_id: accountID }, function (response) {
+            fillForm(response.data);
+            editingID = accountID;
+            $('#create-account-btn').addClass('d-none');
+            $('#update-account-btn').removeClass('d-none');
+            $('html, body').animate({ scrollTop: $('#account-name').offset().top - 80 }, 200);
+        }, '.error-message', $(this));
+    });
+
+    function fillForm(d) {
+        $('#account-name').val(d.name);
+        $('#account-group-list').val(d.group_id);
+        $('#amount').val(Number(d.balance || 0).toFixed(2));
+        $('#account-number').val(d.account_number || '');
+
+        $kind.val(d.kind);
+        $bankType.val(d.kind === 'BANK' ? d.account_type : 'SAVINGS');
+        syncKind();
+
+        $product.val(d.bank_product_id || '');
+        productHint();
+        $('#bank-name').val(d.bank_name || '');
+        $('#new-auto-interest').prop('checked', !!d.auto_interest);
+
+        // An account can't be its own parent, and one with sub-accounts stays a main account
+        $parent.find('option').each(function () {
+            var self = $(this).val() === d.account_id;
+            $(this).prop('hidden', self).prop('disabled', self);
+        });
+        $parent.val(d.parent_account_id || '').prop('disabled', !!d.has_sub_accounts);
+        $kind.prop('disabled', !!d.has_sub_accounts);
+        $('#parent-note').text(d.has_sub_accounts ? 'This account has sub-accounts, so it stays a main account.' : '').toggleClass('d-none', !d.has_sub_accounts);
+
+        // Card: show the current one, and start from "no change"
+        var linked = d.linked_card_id || '';
+        $('input[name="card-mode"][value="none"]').prop('checked', true);
+        if (linked && $('#card-existing').length) {
+            $('#card-existing').prop('checked', true);
+            $('#linked-card-list').val(linked);
+        }
+        var current = d.own_card
+            ? 'Current card: ' + d.own_card.name + ' (' + String(d.own_card.type).replace('_', ' ').toLowerCase() + '). Pick another below to add it.'
+            : (linked ? 'Uses a card of another account.' : 'No card on this account.');
+        $('#card-current small').text(current);
+        $('#card-current').removeClass('d-none');
+        syncCard();
+    }
+
+    $(document).on('click', '#cancel-account-btn', function () {
+        resetAccountForm();
+    });
+
+    // ---- Update: the same fields as creation, plus the account's id ----
+    $(document).on('click', '#update-account-btn', function () {
+        if (!validate()) { return; }
+
+        var data = collect();
+        data.account_id = editingID;
+        data.account_name = data.accountName;
+        data.account_group = data.groupID;
+        data.account_balance = data.amount;
+        data.account_number = $('#account-number').val();
+
+        LB.post('js-request/account/update', data, function () {
+            window.location.reload();
+        }, '.error-message', $(this));
     });
 
     $(document).on('click', '.delete-account-btn', function () {
-        session_id = $(this).data('account-id');
-        account_balance = $('#'+session_id+' .account-balance').html();
+        var session_id = $(this).data('account-id');
+        var account_balance = $('#' + session_id + ' .account-balance').html();
 
-        if(account_balance != 0){
+        if (account_balance != 0) {
             alert('Cannot delete account with balance');
             return;
         }
-        if (confirm("Are you sure you want to delete this account?")) {
+        if (confirm('Are you sure you want to delete this account?')) {
             $.ajax({
-                type: "POST",
-                url: base_url + "/js-request/account/delete",
-                data: {
-                    account_id: session_id,
-                },
-                success: function (data) {
+                type: 'POST',
+                url: base_url + '/js-request/account/delete',
+                data: { account_id: session_id },
+                success: function () {
                     window.location.reload();
                 }
             });
         }
     });
 
-    function resetAccountForm(){
+    function resetAccountForm() {
+        editingID = '';
         $('#create-account-btn').removeClass('d-none');
         $('#update-account-btn').addClass('d-none');
-        $('#default-method-section').removeClass('d-none');
-        $('#account-type-section').removeClass('d-none');
-        $('#account-name').val('');
-        $('#account-number').val('');
-        $('#link-card-check').prop('checked', false).trigger('change');
+        $('#account-name, #account-number, #bank-name, #method-name, #method-reference').val('');
         $('#amount').val(0);
         $('#account-group-list').val($('#account-group-list').data('default-value'));
-        $('.error-message').html("&nbsp;");
-        $('#update-account-btn').data('session-id','');
-
+        $kind.val('CASH').prop('disabled', false);
+        $bankType.val('SAVINGS');
+        $product.val('');
+        $parent.val('').prop('disabled', false);
+        $parent.find('option').prop('hidden', false).prop('disabled', false);
+        $('#parent-note').addClass('d-none').text('');
+        $('#card-none').prop('checked', true);
+        $('#card-current').addClass('d-none');
+        $('#method-type').val('DEBIT_CARD');
+        $('#credit-limit').val('0.00');
+        $('#new-auto-interest').prop('checked', false);
+        $('.error-message').html('&nbsp;');
+        syncKind();
     }
 });

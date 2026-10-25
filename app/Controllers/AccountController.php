@@ -165,6 +165,12 @@ class AccountController extends PaymentService
 
         $data['paymentPlan'] = $this->periodic;
         $data['paymentMethodInfo'] = $this->paymentMethodList($this->userAccess());
+        // Bank accounts that can be the main account of a sub-account
+        $data['mainAccounts'] = $this->db()->table('account')->select('sessionid, name, bankname')
+            ->where(['usersessionid' => $this->userAccess(), 'status' => 'A'])
+            ->where('accounttype !=', 'CASH')
+            ->groupStart()->where('parentaccountsessionid IS NULL', null, false)->orWhere('parentaccountsessionid', '')->groupEnd()
+            ->orderBy('name', 'ASC')->get()->getResultArray();
         $data['accountMeta'] = $this->accountTypeMap($this->userAccess());
         $data['transactionInfo']['paymentMethodMap'] = $this->paymentMethodMap($this->userAccess());
 
@@ -404,6 +410,14 @@ class AccountController extends PaymentService
         if($linkedMethodID !== '' && !$this->isSessionID($linkedMethodID)){
             return $this->apiError($this->paymentError('0092', 'Payment Method', 'Pick a debit card that belongs to another account.'));
         }
+
+        // Sub-account of a bank's main account (one level only, and never cash)
+        $parentID = trim((string) ($request_data['parent_account_id'] ?? ''));
+
+        if($parentID !== '' && ($accountType === 'CASH' || !$this->mainAccountOf($userID, $parentID))){
+            return $this->apiError($this->paymentError('0093', 'Sub-account', 'Pick a main bank account to be the parent. A sub-account can\'t be a parent, and cash accounts can\'t have sub-accounts.'));
+        }
+
         $autoInterest = filter_var($request_data['auto_interest'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         if($productID !== ''){
@@ -418,7 +432,7 @@ class AccountController extends PaymentService
             }
         }
 
-        $result = $this->runAtomic(function () use ($userID, $accountName, $groupID, $amount, $methodInput, $accountType, $productID, $bankName, $autoInterest, $accountNumber, $linkedMethodID) {
+        $result = $this->runAtomic(function () use ($userID, $accountName, $groupID, $amount, $methodInput, $accountType, $productID, $bankName, $autoInterest, $accountNumber, $linkedMethodID, $parentID) {
             $accountCreation = $this->accountInitProccess($userID, $accountName, $groupID, $amount);
 
             if(isset($accountCreation['error_id'])){
@@ -445,8 +459,18 @@ class AccountController extends PaymentService
 
             $this->saveAccountType($userID, $accountID, $accountType, $bankName);
 
+            $extra = ['updateddatetime' => time()];
+
             if($accountNumber !== ''){
-                $this->db()->table('account')->set(['accountnumber' => $accountNumber, 'updateddatetime' => time()])
+                $extra['accountnumber'] = $accountNumber;
+            }
+
+            if($parentID !== ''){
+                $extra['parentaccountsessionid'] = $parentID;
+            }
+
+            if(count($extra) > 1){
+                $this->db()->table('account')->set($extra)
                     ->where(['sessionid' => $accountID, 'usersessionid' => $userID])->update();
             }
 
@@ -454,6 +478,18 @@ class AccountController extends PaymentService
         });
 
         return $this->apiResult($result, 'Successfully created account');
+    }
+
+    /** The account as a main bank account (active, not cash, not itself a sub-account), or null. */
+    protected function mainAccountOf(string $userID, string $accountID): ?array
+    {
+        $row = $this->db()->table('account')->select('sessionid, accounttype')
+            ->where(['sessionid' => $accountID, 'usersessionid' => $userID, 'status' => 'A'])
+            ->where('accounttype !=', 'CASH')
+            ->groupStart()->where('parentaccountsessionid IS NULL', null, false)->orWhere('parentaccountsessionid', '')->groupEnd()
+            ->get()->getRowArray();
+
+        return empty($row) ? null : $row;
     }
 
     public function accountPage($account_id)
@@ -531,6 +567,170 @@ class AccountController extends PaymentService
         return view('Account/page', $data);
     }
 
+    /** POST /js-request/account/details (account_id): what the edit form needs to show the account as it is now. */
+    public function accountDetails()
+    {
+        $userID = $this->userAccess();
+        $request_data = $this->handlePOSTBodyDataList();
+        $accountID = (string) ($request_data['account_id'] ?? '');
+
+        if(! $this->isSessionID($accountID)){
+            return $this->apiError($this->paymentError('0021', 'Account', 'Please select a valid account.'));
+        }
+
+        $account = $this->db()->table('account')
+            ->select('sessionid, name, accountgroupid, currentbalance, accounttype, bankname, accountnumber, parentaccountsessionid, autointerest, bankproductsessionid')
+            ->where(['sessionid' => $accountID, 'usersessionid' => $userID, 'status' => 'A'])
+            ->get()->getRowArray();
+
+        if(empty($account)){
+            return $this->apiError($this->paymentError('0021', 'Account', 'The selected account was not found or is no longer active.'));
+        }
+
+        $methods = $this->db()->table('paymentmethod')
+            ->select('sessionid, type, name, reference, creditlimit, linkedfrom')
+            ->where(['accountsessionid' => $accountID, 'usersessionid' => $userID, 'status' => 'A'])
+            ->get()->getResultArray();
+
+        $ownCard = null;
+        $linkedCard = null;
+
+        foreach($methods as $method){
+            if(! in_array($method['type'], ['DEBIT_CARD', 'CREDIT_CARD'], true)){ continue; }
+
+            if(empty($method['linkedfrom'])){
+                $ownCard = $ownCard ?? $method;
+            } else {
+                $linkedCard = $linkedCard ?? $method;
+            }
+        }
+
+        $children = (int) $this->db()->table('account')
+            ->where(['parentaccountsessionid' => $accountID, 'usersessionid' => $userID, 'status' => 'A'])->countAllResults();
+
+        $kind = in_array($account['accounttype'], ['CASH', 'OTHER'], true) ? $account['accounttype'] : 'BANK';
+
+        return $this->apiResult(['data' => [
+            'account_id'        => $account['sessionid'],
+            'name'              => $account['name'],
+            'group_id'          => $account['accountgroupid'],
+            'balance'           => $account['currentbalance'],
+            'kind'              => $kind,
+            'account_type'      => $account['accounttype'],
+            'bank_name'         => $account['bankname'] ?? '',
+            'account_number'    => $account['accountnumber'] ?? '',
+            'bank_product_id'   => $account['bankproductsessionid'] ?? '',
+            'auto_interest'     => $account['autointerest'] === 'Y' ? 1 : 0,
+            'parent_account_id' => $account['parentaccountsessionid'] ?? '',
+            'has_sub_accounts'  => $children > 0,
+            'own_card'          => $ownCard ? ['id' => $ownCard['sessionid'], 'type' => $ownCard['type'], 'name' => $ownCard['name'], 'reference' => $ownCard['reference'], 'credit_limit' => $ownCard['creditlimit']] : null,
+            'linked_card_id'    => $linkedCard['linkedfrom'] ?? '',
+        ]], 'Account loaded');
+    }
+
+    /**
+     * Save the account's kind, bank details, sub-account parent and card, the same way creation does.
+     * Validates everything first and writes only when all of it is valid.
+     */
+    protected function accountDetailsSaveProccess(string $userID, string $accountID, array $in)
+    {
+        $kind = strtoupper((string) ($in['account_kind'] ?? 'OTHER'));
+        $kind = in_array($kind, ['BANK', 'CASH', 'OTHER'], true) ? $kind : 'OTHER';
+        $bank = ($kind === 'BANK');
+
+        $accountType = $bank ? strtoupper((string) ($in['account_type'] ?? 'OTHER')) : $kind;
+        $accountType = isset(\App\Libraries\BankRateSync::ACCOUNT_TYPES[$accountType]) ? $accountType : 'OTHER';
+        $productID = $bank ? trim((string) ($in['bank_product_id'] ?? '')) : '';
+        $bankName = $bank ? mb_substr(trim(strip_tags((string) ($in['bank_name'] ?? ''))), 0, 100) : '';
+        $number = $bank ? mb_substr(trim(strip_tags((string) ($in['account_number'] ?? ''))), 0, 40) : '';
+        $parentID = $bank ? trim((string) ($in['parent_account_id'] ?? '')) : '';
+        $autoInterest = $bank && filter_var($in['auto_interest'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $cardMode = (string) ($in['card_mode'] ?? 'none');
+        $linkedID = trim((string) ($in['linked_method_id'] ?? ''));
+
+        $hasSubAccounts = (int) $this->db()->table('account')
+            ->where(['parentaccountsessionid' => $accountID, 'usersessionid' => $userID, 'status' => 'A'])->countAllResults() > 0;
+
+        if($kind === 'CASH' && $hasSubAccounts){
+            return $this->paymentError('0093', 'Sub-account', 'This account has sub-accounts, so it can\'t become a cash account. Move the sub-accounts first.');
+        }
+
+        if($parentID !== ''){
+            if($parentID === $accountID || ! $this->mainAccountOf($userID, $parentID)){
+                return $this->paymentError('0093', 'Sub-account', 'Pick a main bank account as the parent. An account can\'t be its own parent, and a sub-account can\'t be a parent.');
+            }
+
+            if($hasSubAccounts){
+                return $this->paymentError('0093', 'Sub-account', 'This account has sub-accounts, so it can\'t become a sub-account itself.');
+            }
+        }
+
+        if($productID !== ''){
+            $product = $this->isSessionID($productID) ? (new \App\Libraries\BankRateSync())->product($productID) : null;
+
+            if($product === null || $product['status'] !== 'A'){
+                return $this->paymentError('0063', 'Bank Product', 'That bank product is not available any more. Refresh the rates and pick another.');
+            }
+
+            if($product['producttype'] !== $accountType && in_array($accountType, \App\Libraries\BankRateSync::BANK_ACCOUNT_TYPES, true)){
+                return $this->paymentError('0067', 'Bank Product', 'The bank product is a different type from the account. Pick a product of the same type.');
+            }
+        }
+
+        if($cardMode === 'existing' && ! $this->isSessionID($linkedID)){
+            return $this->paymentError('0092', 'Payment Method', 'Pick a card that belongs to another account.');
+        }
+
+        return $this->runAtomic(function () use ($userID, $accountID, $bank, $accountType, $productID, $bankName, $number, $parentID, $autoInterest, $cardMode, $linkedID, $in) {
+            $now = time();
+
+            $this->saveAccountType($userID, $accountID, $accountType, $bankName);
+
+            $this->db()->table('account')->set([
+                    'accountnumber'          => $number !== '' ? $number : null,
+                    'parentaccountsessionid' => $parentID !== '' ? $parentID : null,
+                    'updateddatetime'        => $now,
+                ])
+                ->where(['sessionid' => $accountID, 'usersessionid' => $userID])->update();
+
+            $link = $this->linkAccountProduct($userID, $accountID, $productID, $autoInterest);
+
+            if(isset($link['error_id'])){
+                return $link;
+            }
+
+            if($cardMode === 'existing'){
+                // Replace the account's earlier linked card with the chosen one
+                $this->db()->table('paymentmethod')->set(['status' => 'D', 'updateddatetime' => $now])
+                    ->where(['accountsessionid' => $accountID, 'usersessionid' => $userID, 'status' => 'A'])
+                    ->where('linkedfrom IS NOT NULL', null, false)->update();
+
+                $card = $this->linkDebitCardToAccount($userID, $accountID, $linkedID);
+
+                if(isset($card['error_id'])){
+                    return $card;
+                }
+            }
+
+            if($cardMode === 'new'){
+                $cardType = strtoupper((string) ($in['method_type'] ?? 'DEBIT_CARD'));
+                $card = $this->paymentMethodCreateProccess($userID, $accountID, [
+                    'name'         => trim((string) ($in['method_name'] ?? '')) ?: ($this->paymentMethodTypes[$cardType] ?? 'Card'),
+                    'type'         => $cardType,
+                    'reference'    => $in['method_reference'] ?? '',
+                    'credit_limit' => $in['credit_limit'] ?? '0',
+                    'is_default'   => false,
+                ]);
+
+                if(isset($card['error_id'])){
+                    return $card;
+                }
+            }
+
+            return ['success' => true, 'data' => ['account_id' => $accountID]];
+        });
+    }
+
     public function updateAccount(){
         $request_data = $this->handlePOSTBodyDataList();
 
@@ -553,6 +753,17 @@ class AccountController extends PaymentService
             $response = $this->errorHandleforAPIResponses($accountUpdate);
             echo $response;
             exit;
+        }
+
+        // Kind, bank details, sub-account parent and card: the same choices as creation
+        if(array_key_exists('account_kind', $request_data)){
+            $detailsUpdate = $this->accountDetailsSaveProccess($this->userAccess(), $accountID, $request_data);
+
+            if(isset($detailsUpdate['error_id'])){
+                $response = $this->errorHandleforAPIResponses($detailsUpdate);
+                echo $response;
+                exit;
+            }
         }
 
         if(array_key_exists('account_number', $request_data)){

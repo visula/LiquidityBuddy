@@ -44,6 +44,7 @@ $routes->get('/account/group', 'AccountController::accountGroupPage');
 // JS requests: Account
 $routes->post('/js-request/account/create', 'AccountController::createAccount');
 $routes->post('/js-request/account/update', 'AccountController::updateAccount');
+$routes->post('/js-request/account/details', 'AccountController::accountDetails');
 $routes->post('/js-request/account/delete', 'AccountController::deleteAccount');
 
 // JS requests: Budget
