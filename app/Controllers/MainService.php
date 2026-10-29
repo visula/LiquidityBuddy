@@ -106,6 +106,7 @@ class MainService extends BlueprintService
                         ['ID' => 'transaction-proccesss', 'Title' => 'New transaction', 'Icon' => 'plus-circle', 'Link' => '/transaction/add'],
                         ['ID' => 'recurring-list', 'Title' => 'Recurring', 'Icon' => 'arrow-repeat', 'Link' => '/recurring/list'],
                         ['ID' => 'payment-history', 'Title' => 'Payment history', 'Icon' => 'clock-history', 'Link' => '/payment/history'],
+                        ['ID' => 'cashflow', 'Title' => 'Cash flow', 'Icon' => 'graph-up', 'Link' => '/payment/cashflow'],
                     ],
                 ],
                 'MonthlyPlan' => [

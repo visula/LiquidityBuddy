@@ -227,6 +227,7 @@ class AccountController extends PaymentService
             'transactions' => $transactions,
             'allow_all_accounts' => true,
             'paymentMethodMap' => $this->paymentMethodMap($this->userAccess()),
+            'sourceLabels' => $this->transactionSourceLabels($this->userAccess()),
         ];
         $data['transaction_details_container'] = view('Transaction/transaction_details_module', $data['transactionInfo']);
 
@@ -326,11 +327,12 @@ class AccountController extends PaymentService
         $data['accountGroupDetails'] = $accountGroupsInfo;
         $data['methodTypes'] = $this->paymentMethodTypes;
 
-        // The user's own accounts that can be a parent (not sub-accounts themselves), with their group
+        // The user's own bank accounts that can be a main account (not sub-accounts, cards or cash), with their group
         $data['mainAccounts'] = $this->db()->table('account')
             ->select('account.sessionid, account.name, account.bankname, g.name AS groupname', false)
             ->join('accountgroup g', 'g.sessionid = account.accountgroupid AND g.usersessionid = account.usersessionid', 'left')
             ->where(['account.usersessionid' => $this->userAccess(), 'account.status' => 'A'])
+            ->whereIn('account.accounttype', \App\Libraries\BankRateSync::BANK_ACCOUNT_TYPES)
             ->groupStart()->where('account.parentaccountsessionid IS NULL', null, false)->orWhere('account.parentaccountsessionid', '')->groupEnd()
             ->orderBy('account.name', 'ASC')->get()->getResultArray();
 
@@ -571,6 +573,7 @@ class AccountController extends PaymentService
 
         $row = $this->db()->table('account')->select('sessionid')
             ->where(['sessionid' => $parentID, 'usersessionid' => $userID, 'status' => 'A'])
+            ->whereIn('accounttype', \App\Libraries\BankRateSync::BANK_ACCOUNT_TYPES)
             ->groupStart()->where('parentaccountsessionid IS NULL', null, false)->orWhere('parentaccountsessionid', '')->groupEnd()
             ->get()->getRowArray();
 

@@ -92,13 +92,14 @@
                         <th>Type</th>
                         <th>Account</th>
                         <th>Method</th>
+                        <th>For</th>
                         <th>Settlement</th>
                         <th class="text-end">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ($payments === []) { ?>
-                        <tr><td colspan="7" class="text-center text-muted">No payments for this selection</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted">No payments for this selection</td></tr>
                     <?php } ?>
                     <?php foreach ($payments as $payment) { ?>
                         <tr class="payment-row" data-payment="<?= esc($payment['PaymentSessionID'], 'attr') ?>">
@@ -111,13 +112,14 @@
                                 <?php if (! empty($payment['PaymentChannel'])) { ?><br><small class="text-muted"><?= esc(\App\Libraries\BankRateSync::CHANNELS[$payment['PaymentChannel']] ?? $payment['PaymentChannel']) ?></small><?php } ?></td>
                             <td><?= esc($payment['AccountName']) ?><?php if ($payment['ToAccountName']) { ?> &rarr; <?= esc($payment['ToAccountName']) ?><?php } ?></td>
                             <td><?= esc($payment['PaymentMethodLabel']) ?></td>
+                            <td><small><?= esc($payment['PaymentLinkLabel']) ?></small></td>
                             <td><span class="badge <?= $settlementBadge[$payment['PaymentSettlementType']] ?? 'bg-secondary' ?>"><?= esc(ucfirst(strtolower($payment['PaymentSettlementType']))) ?></span></td>
                             <td class="text-end text-nowrap <?= $payment['PaymentDirection'] === 'IN' ? 'text-success' : ($payment['PaymentDirection'] === 'OUT' ? 'text-danger' : '') ?>">
                                 <?= number_format($payment['PaymentAmount'], 2) ?>
                             </td>
                         </tr>
                         <tr class="payment-detail d-none" id="detail-<?= esc($payment['PaymentSessionID'], 'attr') ?>">
-                            <td colspan="7">
+                            <td colspan="8">
                                 <div class="row">
                                     <div class="col-md-7 col-12">
                                         <strong>Transactions</strong>

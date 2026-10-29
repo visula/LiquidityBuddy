@@ -3,9 +3,9 @@
 namespace App\Controllers;
 
 /**
- * Payment methods (per account) and the payment history page.
+ * Payment methods (per account), the payment history page and the cash flow page.
  */
-class PaymentController extends PaymentService
+class PaymentController extends CashflowService
 {
     /** GET /payment-method/list */
     public function paymentMethodPage()
@@ -77,6 +77,29 @@ class PaymentController extends PaymentService
         $data['outstanding'] = $this->outstandingPayables($userID);
 
         return view('Payment/history', $data);
+    }
+
+    /** GET /payment/cashflow */
+    public function cashflowPage()
+    {
+        $is_login = session()->get('is_login');
+
+        if(!isset($is_login) || !$is_login){
+            return redirect()->to(base_url('/login'));
+        }
+
+        $data = [
+            'StoredText' => [
+                'Header' => 'Cash Flow',
+                'ScreenTitle' => 'Cash Flow',
+                'ErrorStatus' => 'Error Status: ',
+            ]
+        ];
+        $data['Head'] = $this->commonHead();
+        $data['CurrentID'] = 'cashflow';
+        $data['cashflow'] = $this->cashflowProccess($this->userAccess());
+
+        return view('Payment/cashflow', $data);
     }
 
     /** POST /js-request/payment-method/create */

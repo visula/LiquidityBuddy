@@ -31,31 +31,53 @@ $(document).ready(function () {
         syncCard();
     }
 
-    // Only products of the chosen bank product type can be picked
-    function syncProduct() {
-        var type = $bankType.val();
+    // The full product list (placeholder + one optgroup per bank), kept so it can be filtered again and again
+    var allProducts = null;
 
-        $product.find('option[data-type]').each(function () {
-            var fits = $(this).attr('data-type') === type;
-            $(this).prop('hidden', !fits).prop('disabled', !fits);
+    function normalise(text) {
+        return String(text || '').trim().toLowerCase();
+    }
+
+    // Products are narrowed by the bank typed in (when it names a known bank) and then by the bank product type
+    function syncProduct() {
+        if (allProducts === null) { allProducts = $product.children().clone(); }
+
+        var type = $bankType.val();
+        var bank = normalise($('#bank-name').val());
+        var bankKnown = allProducts.filter('optgroup').toArray().some(function (group) { return normalise(group.label) === bank; });
+        var $list = $();
+
+        allProducts.each(function () {
+            if (this.tagName === 'OPTION') {
+                $list = $list.add($(this).clone());
+                return;
+            }
+
+            if (bankKnown && normalise(this.label) !== bank) { return; }
+
+            var $group = $('<optgroup></optgroup>').attr('label', this.label);
+            $(this).children('option').filter(function () { return $(this).attr('data-type') === type; })
+                .each(function () { $group.append($(this).clone()); });
+
+            if ($group.children().length) { $list = $list.add($group); }
         });
-        if ($product.find('option:selected').prop('disabled')) { $product.val(''); }
+
+        var previous = $product.val();
+        $product.empty().append($list);
+        $product.val($product.find('option[value="' + previous + '"]').length ? previous : '');
         productHint();
     }
 
-    // A chosen product names the bank and may pay interest
+    // A chosen product names its bank and may pay interest
     function productHint() {
         var $option = $product.find('option:selected');
         var $hint = $('#bank-product-hint');
 
         if (!$option.val()) {
-            $hint.html($hint.data('default'));
+            $hint.html($product.find('optgroup').length ? $hint.data('default') : 'No bank product matches this bank and type. Choose "Not listed / choose later" or change them.');
             $('#auto-interest-row').addClass('d-none');
             return;
         }
-
-        var bank = $option.closest('optgroup').attr('label') || '';
-        if (bank && !$('#bank-name').val()) { $('#bank-name').val(bank); }
 
         $hint.text($option.attr('data-rate') + '% p.a.' + ($option.attr('data-fees') ? ' · Charges: ' + $option.attr('data-fees') : ''));
         $('#auto-interest-row').toggleClass('d-none', parseFloat($option.attr('data-rate')) <= 0);
@@ -70,7 +92,14 @@ $(document).ready(function () {
 
     $kind.on('change', syncKind);
     $bankType.on('change', syncProduct);
-    $product.on('change', productHint);
+    $('#bank-name').on('input change', syncProduct);
+
+    // Picking a product sets the bank name to the product's bank
+    $product.on('change', function () {
+        var bank = $product.find('option:selected').closest('optgroup').attr('label') || '';
+        if (bank) { $('#bank-name').val(bank); }
+        productHint();
+    });
     $('input[name="card-mode"]').on('change', syncCard);
     $('#method-type').on('change', syncCard);
 
@@ -151,13 +180,14 @@ $(document).ready(function () {
         $('#amount').val(Number(d.balance || 0).toFixed(2));
         $('#account-number').val(d.account_number || '');
 
+        // bank and type go in before the kind sync, so the product list is filtered for this account
         $kind.val(d.kind);
         $bankType.val(d.kind === 'BANK' ? d.account_type : 'SAVINGS');
+        $('#bank-name').val(d.bank_name || '');
         syncKind();
 
         $product.val(d.bank_product_id || '');
         productHint();
-        $('#bank-name').val(d.bank_name || '');
         $('#new-auto-interest').prop('checked', !!d.auto_interest);
 
         // An account can't be its own parent, and one with sub-accounts stays a main account

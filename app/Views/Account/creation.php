@@ -15,13 +15,6 @@
     $productsByBank = [];
     foreach (($bankProducts ?? []) as $product) { $productsByBank[$product['bankname']][] = $product; }
 
-    // Cards a bank account can use: debit or credit cards that are not themselves links, and are shown
-    $cards = array_values(array_filter($paymentMethodInfo ?? [], static function ($method) {
-        return in_array($method['PaymentMethodType'] ?? '', ['DEBIT_CARD', 'CREDIT_CARD'], true)
-            && empty($method['PaymentMethodLinkedFrom'])
-            && ($method['PaymentMethodShowInDropdown'] ?? 'Y') !== 'N';
-    }));
-
     // The types a bank account can be (its product type)
     $bankTypes = array_intersect_key($accountTypes, array_flip(['SAVINGS', 'CURRENT', 'FIXED_DEPOSIT', 'OTHER']));
 ?>
@@ -130,7 +123,7 @@
                                                         <option value="<?= esc($product['sessionid'], 'attr') ?>"
                                                                 data-type="<?= esc($product['producttype'], 'attr') ?>"
                                                                 data-rate="<?= esc($pct($product['interestrate']), 'attr') ?>"
-                                                                data-fees="<?= esc(\App\Libraries\BankRateSync::feeSummary($productFees[$product['sessionid']] ?? []), 'attr') ?>"><?<?= esc($product['productname']) ?> · <?= $pct($product['interestrate']) ?>%</option>
+                                                                data-fees="<?= esc(\App\Libraries\BankRateSync::feeSummary($productFees[$product['sessionid']] ?? []), 'attr') ?>"><?= esc($product['productname']) ?> · <?= $pct($product['interestrate']) ?>%</option>
                                                     <?php } ?>
                                                 </optgroup>
                                             <?php } ?>

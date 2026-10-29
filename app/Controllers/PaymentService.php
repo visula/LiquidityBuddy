@@ -1005,6 +1005,7 @@ class PaymentService extends AccountService
             ->select('pay.sessionid AS PaymentSessionID, pay.date AS PaymentDate, pay.direction AS PaymentDirection,
                       pay.category AS PaymentCategory, pay.settlementtype AS PaymentSettlementType, pay.amount AS PaymentAmount,
                       pay.description AS PaymentDescription, pay.reference AS PaymentReference, pay.channel AS PaymentChannel,
+                      pay.linktype AS PaymentLinkType, pay.linksessionid AS PaymentLinkSessionID,
                       a.sessionid AS AccountSessionID, a.name AS AccountName, ta.name AS ToAccountName,
                       pm.name AS PaymentMethodName, pm.type AS PaymentMethodType, pm.reference AS PaymentMethodReference', false)
             ->join('account a', 'a.sessionid = pay.accountsessionid')
@@ -1047,15 +1048,103 @@ class PaymentService extends AccountService
             $byPayment[$row['paymentsessionid']]['Allocations'][] = $row;
         }
 
+        $linkLabels = $this->linkLabels($userID, $payments);
+
         foreach ($payments as $key => $payment) {
             $payments[$key]['PaymentMethodLabel'] = $payment['PaymentMethodName']
                 ? $payment['PaymentMethodName'] . ($payment['PaymentMethodReference'] ? ' ••' . $payment['PaymentMethodReference'] : '')
                 : '-';
+            $payments[$key]['PaymentLinkLabel'] = $linkLabels[$payment['PaymentLinkType'] . '|' . $payment['PaymentLinkSessionID']] ?? 'Payment';
             $payments[$key]['Transactions'] = $byPayment[$payment['PaymentSessionID']]['Transactions'] ?? [];
             $payments[$key]['Allocations'] = $byPayment[$payment['PaymentSessionID']]['Allocations'] ?? [];
         }
 
         return $payments;
+    }
+
+    /**
+     * What a payment is for, as a readable label ("Purchase: x", "Payment plan: x", "Travel" ...).
+     * $rows need PaymentLinkType and PaymentLinkSessionID. Returns ['type|sessionid' => label].
+     */
+    protected function linkLabels(string $userID, array $rows): array
+    {
+        $purchaseIDs = [];
+        $planIDs = [];
+
+        foreach ($rows as $row) {
+            if (($row['PaymentLinkType'] ?? '') === 'purchase') {
+                $purchaseIDs[] = $row['PaymentLinkSessionID'];
+            } elseif (($row['PaymentLinkType'] ?? '') === 'paymentplan') {
+                $planIDs[] = $row['PaymentLinkSessionID'];
+            }
+        }
+
+        $names = [];
+
+        if ($purchaseIDs !== []) {
+            $purchases = $this->db()->table('purchase')
+                ->select('sessionid, description')
+                ->where('usersessionid', $userID)
+                ->whereIn('sessionid', array_unique($purchaseIDs))
+                ->get()->getResultArray();
+
+            foreach ($purchases as $purchase) {
+                $names['purchase|' . $purchase['sessionid']] = 'Purchase: ' . $purchase['description'];
+            }
+        }
+
+        if ($planIDs !== []) {
+            $plans = $this->db()->table('paymentplan')
+                ->select('sessionid, paymentplanlink, description')
+                ->where('usersessionid', $userID)
+                ->whereIn('sessionid', array_unique($planIDs))
+                ->get()->getResultArray();
+
+            foreach ($plans as $plan) {
+                $name = (string) ($plan['description'] ?? '') !== '' ? $plan['description'] : $plan['paymentplanlink'];
+                $names['paymentplan|' . $plan['sessionid']] = 'Payment plan: ' . $name;
+            }
+        }
+
+        $typeLabels = ['payable' => 'Dues settlement', 'transfer' => 'Transfer', 'interest' => 'Interest', 'recurring' => 'Recurring'];
+        $labels = [];
+
+        foreach ($rows as $row) {
+            $type = (string) ($row['PaymentLinkType'] ?? '');
+            $key = $type . '|' . ($row['PaymentLinkSessionID'] ?? '');
+
+            if ($type !== '' && ! isset($labels[$key])) {
+                $labels[$key] = $names[$key] ?? ($typeLabels[$type] ?? ucfirst($type));
+            }
+        }
+
+        return $labels;
+    }
+
+    /**
+     * Source label for each transaction the user owns (TransactionSessionID => label).
+     * Only transactions that were posted through the payment ledger have one; older rows get no entry.
+     */
+    protected function transactionSourceLabels(string $userID): array
+    {
+        $rows = $this->db()->table('transaction t')
+            ->select('t.sessionid AS TransactionSessionID, pay.direction AS PaymentDirection, pay.linktype AS PaymentLinkType, pay.linksessionid AS PaymentLinkSessionID')
+            ->join('account a', 'a.sessionid = t.accountsessionid')
+            ->join('payment pay', 'pay.sessionid = t.paymentsessionid')
+            ->where('a.usersessionid', $userID)
+            ->where('t.status', 'A')
+            ->get()->getResultArray();
+
+        $linkLabels = $this->linkLabels($userID, $rows);
+        $sources = [];
+
+        foreach ($rows as $row) {
+            $sources[$row['TransactionSessionID']] = ($row['PaymentDirection'] === 'TRANSFER')
+                ? 'Transfer'
+                : ($linkLabels[$row['PaymentLinkType'] . '|' . $row['PaymentLinkSessionID']] ?? 'Payment');
+        }
+
+        return $sources;
     }
 
     /** Paid out / received totals per account + payment method. */

@@ -149,7 +149,7 @@ class AccountService extends MainService
     public function activeTransactionListAccess($userID, $accountID = '')
     {
         $condtionList = ['UserSessionID' => $userID, 'AccountStatus' => 'A', 'TransactionStatus' => 'A'];
-        $feildList = ['AccountSessionID','AccountName','TransactionDescription','TransactionDate','TransactionAmount','TransactionPayableType','AccountCurrentBalance','PaymentMethodSessionID','TransactionBalanceAfter'];
+        $feildList = ['AccountSessionID','AccountName','TransactionSessionID','TransactionDescription','TransactionDate','TransactionAmount','TransactionPayableType','AccountCurrentBalance','PaymentMethodSessionID','TransactionBalanceAfter'];
         $organizerList = ['orderBy' => ['TransactionCreatedDateTime' => 'DESC', 'TransactionID' => 'DESC']];
 
         if($accountID != ''){

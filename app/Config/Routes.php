@@ -78,6 +78,7 @@ $routes->post('/js-request/payment/settle', 'PurchaseController::duedTransaction
 // Account wise payment methods + payment ledger
 $routes->get('/payment-method/list', 'PaymentController::paymentMethodPage');
 $routes->get('/payment/history', 'PaymentController::paymentHistoryPage');
+$routes->get('/payment/cashflow', 'PaymentController::cashflowPage');
 $routes->post('/js-request/payment-method/create', 'PaymentController::createPaymentMethod');
 $routes->post('/js-request/payment-method/update', 'PaymentController::updatePaymentMethod');
 $routes->post('/js-request/payment-method/delete', 'PaymentController::deletePaymentMethod');

@@ -12,6 +12,9 @@
         <?php if(isset($paymentMethodMap)){ ?>
         <th class="text-center">Method</th>
         <?php } ?>
+        <?php if(isset($sourceLabels)){ ?>
+        <th>Source</th>
+        <?php } ?>
         <?php if($allow_all_accounts){  ?>
         <th>Account</th>
         <?php } ?>
@@ -44,6 +47,9 @@
                     <td class="text-end mx-3"><?= number_format($currentBalance,2) ?></td>
                     <?php if(isset($paymentMethodMap)){ ?>
                         <td class="text-center"><small><?= esc($paymentMethodMap[$transaction['PaymentMethodSessionID'] ?? ''] ?? '-') ?></small></td>
+                    <?php } ?>
+                    <?php if(isset($sourceLabels)){ ?>
+                        <td><small><?= esc($sourceLabels[$transaction['TransactionSessionID'] ?? ''] ?? '-') ?></small></td>
                     <?php } ?>
                     <?php if($allow_all_accounts){  ?>
                         <td><?= esc($transaction['AccountName']) ?></td>
