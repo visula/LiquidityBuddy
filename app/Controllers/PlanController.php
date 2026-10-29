@@ -61,7 +61,8 @@ class PlanController extends PlanService
         $data = $this->planPageData('Monthly Plan ' . $year, 'plan-year');
         $data['grid'] = $grid;
         $data['allocation'] = $this->planAllocation($grid, $allocationMonth);
-        $data['allocationPercentTotal'] = $this->planAllocationPercentTotal($userID);
+        $data['allocationPercentTotal'] = $this->planAllocationPercentTotal($userID, 'OUT');
+        $data['incomePercentTotal'] = $this->planAllocationPercentTotal($userID, 'IN');
         $data['hasItems'] = $this->db()->table('planitem')->where('usersessionid', $userID)->where('status <>', 'D')->countAllResults() > 0;
 
         return view('Plan/year', $data);
@@ -106,7 +107,8 @@ class PlanController extends PlanService
         $data = $this->planPageData('Plan Items', 'plan-items');
         $data['items'] = $this->planItemList($userID);
         $data['categories'] = $this->planCategories($userID);
-        $data['allocationPercentTotal'] = $this->planAllocationPercentTotal($userID);
+        $data['allocationPercentTotal'] = $this->planAllocationPercentTotal($userID, 'OUT');
+        $data['incomePercentTotal'] = $this->planAllocationPercentTotal($userID, 'IN');
         $data['accounts'] = $this->rowsOf($this->activeAccountListAccessModule($userID));
         $data['budgetInfo'] = $this->rowsOf($this->budgetList($userID));
         $data['paymentMethodInfo'] = $this->paymentMethodList($userID);

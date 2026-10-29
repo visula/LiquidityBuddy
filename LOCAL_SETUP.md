@@ -257,3 +257,31 @@ See [`docs/PAYMENT_METHODS.md`](docs/PAYMENT_METHODS.md) for the data model, the
 | Pages | `app/Views/Payment/*`, `app/Views/Transaction/dued_trans_module.php`, `payment_method_select.php` |
 | Front end | `public/assets/js/default.js` (shared helpers), `public/assets/js/payment/methods.js`, `public/assets/js/transaction/*` |
 | Local setup | `scripts/setup-local-db.sh`, `scripts/setup-local-db.bat`, `scripts/sql/dev_group_orphan_accounts.sql` |
+
+## Password reset email
+
+Users reset a forgotten password from the login page (**Reset password**). The emailed link
+works for 30 minutes and only once. Emails are sent with CodeIgniter's mail settings, so set
+them in `.env` (SMTP example):
+
+```ini
+email.protocol   = smtp
+email.fromEmail  = 'no-reply@example.com'
+email.fromName   = 'Liquidity Buddy'
+email.SMTPHost   = 'smtp.example.com'
+email.SMTPUser   = 'no-reply@example.com'
+email.SMTPPass   = 'your-app-password'
+email.SMTPPort   = 587
+email.SMTPCrypto = 'tls'
+```
+
+If the email can't be sent, the request still answers the same way, and the failure is written
+to `writable/logs`. In the development environment the reset link is logged too, so the flow
+can be tested without mail.
+
+Apply `DBBackup/Migrations/2026_10_20_password_reset.sql` (the setup script does this).
+
+## Phones
+
+The layout is responsive: forms stack to one column, buttons and fields are at least 44px tall,
+and wide tables scroll inside their own box. The rules are in `public/assets/css/mobile.css`.

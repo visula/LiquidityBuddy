@@ -64,7 +64,6 @@ $(document).ready(function () {
     // ---- Card: none, a card already in the system, or a new card ----
     function syncCard() {
         var mode = cardMode();
-        $('#card-existing-col').toggleClass('d-none', !(isBank() && mode === 'existing'));
         $('#card-new-col').toggleClass('d-none', !(isBank() && mode === 'new'));
         $('#credit-limit-input').toggleClass('d-none', !(mode === 'new' && $('#method-type').val() === 'CREDIT_CARD'));
     }
@@ -92,7 +91,6 @@ $(document).ready(function () {
             method_name: '',
             method_reference: '',
             credit_limit: '0',
-            linked_method_id: '',
             bank_name: bank ? $('#bank-name').val() : '',
             bank_product_id: bank ? $product.val() : '',
             account_number: bank ? $('#account-number').val() : '',
@@ -100,10 +98,6 @@ $(document).ready(function () {
             auto_interest: bank && $('#new-auto-interest').is(':checked') ? 1 : 0,
             card_mode: bank ? cardMode() : 'none'
         };
-
-        if (bank && cardMode() === 'existing') {
-            data.linked_method_id = $('#linked-card-list').val();
-        }
 
         if (bank && cardMode() === 'new') {
             data.method_type = $('#method-type').val();
@@ -123,11 +117,6 @@ $(document).ready(function () {
 
         if ($('#amount').val() == '') {
             $('.error-message').text('* Amount is required');
-            return false;
-        }
-
-        if (isBank() && cardMode() === 'existing' && !$('#linked-card-list').val()) {
-            $('.error-message').text('* Choose the card, or pick "No card for this account"');
             return false;
         }
 
@@ -181,15 +170,10 @@ $(document).ready(function () {
         $('#parent-note').text(d.has_sub_accounts ? 'This account has sub-accounts, so it stays a main account.' : '').toggleClass('d-none', !d.has_sub_accounts);
 
         // Card: show the current one, and start from "no change"
-        var linked = d.linked_card_id || '';
         $('input[name="card-mode"][value="none"]').prop('checked', true);
-        if (linked && $('#card-existing').length) {
-            $('#card-existing').prop('checked', true);
-            $('#linked-card-list').val(linked);
-        }
         var current = d.own_card
             ? 'Current card: ' + d.own_card.name + ' (' + String(d.own_card.type).replace('_', ' ').toLowerCase() + '). Pick another below to add it.'
-            : (linked ? 'Uses a card of another account.' : 'No card on this account.');
+            : 'No card on this account.';
         $('#card-current small').text(current);
         $('#card-current').removeClass('d-none');
         syncCard();
@@ -213,6 +197,27 @@ $(document).ready(function () {
         LB.post('js-request/account/update', data, function () {
             window.location.reload();
         }, '.error-message', $(this));
+    });
+
+    // Move every sub-account's balance into this main account, one internal transfer each
+    $(document).on('click', '.settle-main-btn', function () {
+        var $button = $(this);
+        var name = $button.data('account-name');
+
+        if (!window.confirm('Move the balance of every sub-account of "' + name + '" into it? Each move is recorded as an internal transfer.')) { return; }
+
+        LB.post('js-request/account/settle-main', { account_id: $button.data('account-id') }, function (response) {
+            var data = response.data || {};
+            var lines = (data.moved || []).map(function (m) {
+                return m.name + ': ' + LB.money(m.amount) + (m.fee > 0 ? ' (bank charge ' + LB.money(m.fee) + ')' : '');
+            });
+            if ((data.skipped || []).length) {
+                lines.push('Not moved:');
+                lines = lines.concat(data.skipped);
+            }
+            window.alert(lines.length ? lines.join('\n') : 'No sub-account has a balance to settle.');
+            window.location.reload();
+        }, '.error-message', $button);
     });
 
     $(document).on('click', '.delete-account-btn', function () {

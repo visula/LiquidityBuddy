@@ -28,7 +28,7 @@ class Home extends MainService
             "SignupLink" => "/user/signup-page",
             "SignupPara" => "Not a member yet? ",
             "SignupAnchor" => "Sign up now",
-            "PassworResetLink" => "/user/password-reset",
+            "PassworResetLink" => "/user/forgot-password",
             "PassworResetPara" => "Forgot password? ",
             "PassworResetAnchor" => "Reset password"
             ]
@@ -110,7 +110,7 @@ class Home extends MainService
         $is_login = session()->get('is_login');
 
         if(isset($is_login) && $is_login){
-            return redirect('/account/list')->to(base_url());
+            return redirect()->to(base_url('/account/list'));
         }
 
         $StoredText = [

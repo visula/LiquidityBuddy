@@ -19,7 +19,8 @@
         return '<span class="' . ($value < 0 ? 'plan-negative' : '') . '">' . $fmt($value) . '</span>';
     };
     $stateLabels = ['settled' => 'Settled', 'partial' => 'Part paid', 'overdue' => 'Overdue', 'upcoming' => 'Upcoming',
-        'historical' => 'History (before tracking)', 'skipped' => 'Skipped', 'envelope' => 'Envelope'];
+        'historical' => 'History (before tracking)', 'skipped' => 'Skipped', 'envelope' => 'Envelope',
+        'expected' => 'Income expected', 'late' => 'Income not received'];
 ?>
     <div class="container-fluid">
         <div class="plan-toolbar">
@@ -44,7 +45,7 @@
         <div id="plan-year-region">
         <div class="lb-card">
             <div class="plan-legend">
-                <?php foreach (['settled', 'partial', 'overdue', 'upcoming', 'envelope', 'historical', 'skipped'] as $state) { ?>
+                <?php foreach (['settled', 'partial', 'overdue', 'late', 'upcoming', 'expected', 'envelope', 'historical', 'skipped'] as $state) { ?>
                     <span class="lg-<?= $state ?>"><?= esc($stateLabels[$state]) ?></span>
                 <?php } ?>
                 <span class="ms-auto">Click an amount to change or skip that month.</span>
@@ -89,13 +90,14 @@
                                         if ((float) $cell['paidamount'] > 0) { $title .= ' · paid ' . $fmt($cell['paidamount']); }
                                         if ($cell['kind'] === 'ENVELOPE') { $title .= ' · spent ' . $fmt($cell['spent'] ?? 0); }
                                     ?>
-                                        <td class="plan-cell plan-cell--<?= esc($cell['state'], 'attr') ?><?= $isCurrent ?> plan-entry-open<?= $cell['editable'] ? ' is-editable' : '' ?>"
+                                        <?php $cellState = ($item['direction'] === 'IN' && $cell['state'] === 'overdue') ? 'late' : (($item['direction'] === 'IN' && $cell['state'] === 'upcoming') ? 'expected' : $cell['state']); ?>
+                                        <td class="plan-cell plan-cell--<?= esc($cellState, 'attr') ?><?= $isCurrent ?> plan-entry-open<?= $cell['editable'] ? ' is-editable' : '' ?>"
                                             title="<?= esc($title, 'attr') ?>"
                                             data-entry="<?= esc($cell['sessionid'], 'attr') ?>"
                                             data-label="<?= esc($item['name'] . ' · ' . date('M Y', strtotime($ym . '-01')), 'attr') ?>"
                                             data-amount="<?= esc($cell['plannedamount'], 'attr') ?>"
                                             data-paid="<?= esc($cell['paidamount'], 'attr') ?>"
-                                            data-state="<?= esc($cell['state'], 'attr') ?>"
+                                            data-state="<?= esc($cellState, 'attr') ?>"
                                             data-editable="<?= $cell['editable'] ? '1' : '0' ?>">
                                             <?= $fmt($cell['plannedamount']) ?>
                                             <?php if ($cell['kind'] === 'ENVELOPE' && $cell['status'] === 'A') { ?>
@@ -193,11 +195,17 @@
                     </div>
                     <?php if (abs($allocationPercentTotal - 100) > 0.001) { ?>
                         <div class="alert alert-warning py-2" id="plan-allocation-banner">
-                            Your category allocations add up to <strong><?= rtrim(rtrim(number_format($allocationPercentTotal, 2), '0'), '.') ?>%</strong>, not 100%.
+                            Your spending allocations add up to <strong><?= rtrim(rtrim(number_format($allocationPercentTotal, 2), '0'), '.') ?>%</strong>, not 100%.
                             Adjust them on the <a href="<?= base_url('/plan/items') ?>">Plan items</a> page.
                         </div>
                     <?php } ?>
-                    <p class="text-muted small">Target = the category's % of the month's planned income (<?= $fmt($allocation['income']) ?> in <?= esc(date('F', strtotime($allocation['month'] . '-01'))) ?>).</p>
+                    <?php if ($incomePercentTotal > 0 && abs($incomePercentTotal - 100) > 0.001) { ?>
+                        <div class="alert alert-warning py-2" id="plan-income-banner">
+                            Your income shares add up to <strong><?= rtrim(rtrim(number_format($incomePercentTotal, 2), '0'), '.') ?>%</strong>, not 100%.
+                            Adjust the income categories on the <a href="<?= base_url('/plan/items') ?>">Plan items</a> page.
+                        </div>
+                    <?php } ?>
+                    <p class="text-muted small">Target = the category's % of the month's planned income (<?= $fmt($allocation['income']) ?> in <?= esc(date('F', strtotime($allocation['month'] . '-01'))) ?>). Income categories show their share of that income.</p>
                     <div class="table-responsive">
                         <table class="table table-sm">
                             <thead>
@@ -214,7 +222,7 @@
                             <tbody>
                                 <?php foreach ($allocation['categories'] as $category) { ?>
                                     <tr>
-                                        <td><?= esc($category['label']) ?></td>
+                                        <td><?= esc($category['label']) ?> <small class="text-muted"><?= $category['direction'] === 'IN' ? '(income)' : '' ?></small></td>
                                         <td class="text-end"><?= $category['percent'] === null ? '<span class="text-muted">&ndash;</span>' : rtrim(rtrim(number_format($category['percent'], 2), '0'), '.') . '%' ?></td>
                                         <td class="text-end"><?= $category['target'] === null ? '<span class="text-muted">&ndash;</span>' : $fmt($category['target']) ?></td>
                                         <td class="text-end"><?= $fmt($category['planned']) ?></td>

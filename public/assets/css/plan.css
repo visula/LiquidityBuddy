@@ -12,6 +12,10 @@
     --plan-historical-fg: #8a8f9c;
     --plan-envelope-bg: #eef0fb;
     --plan-envelope-fg: #39408a;
+    --plan-expected-bg: #e6f1fb;
+    --plan-expected-fg: #1f5585;
+    --plan-late-bg: #fbe9d7;
+    --plan-late-fg: #8a4a0b;
 }
 
 /* ---------- Toolbar ---------- */
@@ -61,6 +65,8 @@
 .plan-legend .lg-upcoming::before { background: var(--lb-surface); }
 .plan-legend .lg-historical::before { background: var(--plan-historical-bg); }
 .plan-legend .lg-envelope::before { background: var(--plan-envelope-bg); }
+.plan-legend .lg-expected::before { background: var(--plan-expected-bg); }
+.plan-legend .lg-late::before { background: var(--plan-late-bg); }
 .plan-legend .lg-skipped::before { background: linear-gradient(to top right, transparent 45%, var(--lb-muted) 50%, transparent 55%); }
 
 /* ---------- Year grid ---------- */
@@ -157,6 +163,9 @@
 .plan-cell--overdue { background: var(--plan-overdue-bg) !important; color: var(--plan-overdue-fg); font-weight: 600; }
 .plan-cell--historical { background: var(--plan-historical-bg) !important; color: var(--plan-historical-fg); }
 .plan-cell--envelope { background: var(--plan-envelope-bg) !important; color: var(--plan-envelope-fg); }
+/* Income: expected (not yet received) and late (past its date, not received). Not red: nothing is owed. */
+.plan-cell--expected { background: var(--plan-expected-bg) !important; color: var(--plan-expected-fg); }
+.plan-cell--late { background: var(--plan-late-bg) !important; color: var(--plan-late-fg); font-weight: 600; }
 .plan-cell--skipped { color: var(--lb-muted); text-decoration: line-through; }
 
 .plan-cell .plan-cell-sub {

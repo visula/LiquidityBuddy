@@ -481,13 +481,18 @@ class PlanService extends PaymentService
             return null;
         };
 
-        $resolveMethod = function ($accountID, $hint, string $itemKey) use ($userID, &$report) {
+        // one lookup per account, not per item (the import runs this for every seed item)
+        $methodsByAccount = [];
+
+        $resolveMethod = function ($accountID, $hint, string $itemKey) use ($userID, &$report, &$methodsByAccount) {
             if ($accountID === null) {
                 return null;
             }
 
             if ($hint !== null && $hint !== '') {
-                foreach ($this->paymentMethodList($userID, $accountID) as $method) {
+                $methodsByAccount[$accountID] ??= $this->paymentMethodList($userID, $accountID);
+
+                foreach ($methodsByAccount[$accountID] as $method) {
                     if (strcasecmp($method['PaymentMethodName'], (string) $hint) === 0) {
                         return $method['PaymentMethodSessionID'];
                     }
@@ -2190,10 +2195,7 @@ class PlanService extends PaymentService
         $percentTotal = 0.0;
 
         foreach ($grid['groups'] as $key => $group) {
-            if ($group['direction'] === 'IN') {
-                continue;
-            }
-
+            // Income categories take a share of the month's planned income too (income mix)
             $planned = 0.0;
             $yearPlanned = 0.0;
             foreach ($group['items'] as $row) {
@@ -2214,6 +2216,7 @@ class PlanService extends PaymentService
             $categories[] = [
                 'category_id' => ($key === 'none') ? null : $key,
                 'label'       => $group['label'],
+                'direction'   => $group['direction'],
                 'percent'     => $percent,
                 'planned'     => round($planned, 2),
                 'target'      => $target,
@@ -2226,12 +2229,12 @@ class PlanService extends PaymentService
         return ['month' => $ym, 'income' => round($income, 2), 'categories' => $categories];
     }
 
-    /** Sum of the active payment categories' allocation % (banner when it isn't 100). */
-    protected function planAllocationPercentTotal(string $userID): float
+    /** Sum of the active categories' allocation % for one direction (banner when it isn't 100). */
+    protected function planAllocationPercentTotal(string $userID, string $direction = 'OUT'): float
     {
         return round((float) $this->db()->query(
-            'SELECT COALESCE(SUM(allocationpercent), 0) AS total FROM plancategory WHERE usersessionid = ? AND status = \'A\' AND direction = \'OUT\'',
-            [$userID]
+            'SELECT COALESCE(SUM(allocationpercent), 0) AS total FROM plancategory WHERE usersessionid = ? AND status = \'A\' AND direction = ?',
+            [$userID, $direction]
         )->getRow()->total, 2);
     }
 

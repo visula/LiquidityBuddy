@@ -1,3 +1,4 @@
+<?php $subAccounts = $subAccounts ?? ['children' => [], 'parentOf' => []]; ?>
 <div class="table-responsive">
 <table class="table table-striped mb-3">
     <thead>
@@ -13,11 +14,19 @@
             $currentPage = ceil(($key + 1) / $page_limit);
             ?>
             <tr class="t-row-account-action <?php if(($key + 1) > $page_limit){echo 'd-none';}?>" data-page-no="account-page-no-<?= $currentPage?>" id="<?= $account['AccountSessionID']?>" data-account-number="<?= esc((string) ($account['AccountNumber'] ?? ''), 'attr') ?>">
-                <td class="account-name"><?= $account['AccountName'] ?></td>
+                <?php
+                    $subs = $subAccounts['children'][$account['AccountSessionID']] ?? [];
+                    $mainOf = $subAccounts['parentOf'][$account['AccountSessionID']] ?? null;
+                    $subsOwed = array_sum(array_map(static fn ($s) => max(0, $s['balance']), $subs));
+                ?>
+                <td class="account-name"><?= $account['AccountName'] ?>
+                    <?php if($mainOf !== null){ ?><small class="d-block text-muted">Sub-account of <?= esc($mainOf) ?></small><?php } ?>
+                    <?php if($subs !== []){ ?><small class="d-block text-muted">Main account · <?= count($subs) ?> sub-account<?= count($subs) > 1 ? 's' : '' ?></small><?php } ?>
+                </td>
                 <td class="text-end account-balance"><?= number_format($account['AccountCurrentBalance'],2) ?></td>
                 <td class="text-center account-group"  data-account-group-id="<?= $account['AccountGroupSessionID'] ?>"><?= $account['AccountGroupName'] ?></td>
                 <?php if($edit_mode){ ?>
-                    <td class="text-end text-nowrap"><a data-account-id="<?= $account['AccountSessionID'] ?>" class="btn btn-sm btn-outline-primary update-account-btn">Update</a> <a data-account-id="<?= $account['AccountSessionID'] ?>"  class="btn btn-sm btn-outline-danger delete-account-btn">Remove</a></td>
+                    <td class="text-end text-nowrap"><?php if($subsOwed > 0){ ?><a data-account-id="<?= $account['AccountSessionID'] ?>" class="btn btn-sm btn-outline-secondary settle-main-btn" data-account-name="<?= esc($account['AccountName'], 'attr') ?>">Settle sub-accounts</a> <?php } ?><a data-account-id="<?= $account['AccountSessionID'] ?>" class="btn btn-sm btn-outline-primary update-account-btn">Update</a> <a data-account-id="<?= $account['AccountSessionID'] ?>"  class="btn btn-sm btn-outline-danger delete-account-btn">Remove</a></td>
                 <?php } ?>
             </tr>
         <?php } ?>                        

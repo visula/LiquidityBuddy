@@ -93,16 +93,39 @@ LB.amountValue = function (value) {
  * Amount fields show thousands separators when they lose focus and go back to plain
  * digits while being edited, so typing never fights the separators.
  */
-$(document).on('focusout', '#amount, input[name="amount"]', function () {
+var AMOUNT_FIELDS = '#amount, input[name="amount"]';
+
+/** While typing: digits and one decimal point, at most two decimal digits. */
+LB.amountTyping = function (raw) {
+    var text = String(raw || '').replace(/[^0-9.]/g, '');
+    var dot = text.indexOf('.');
+
+    if (dot === -1) { return text; }
+    return text.slice(0, dot + 1) + text.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+};
+
+/** Leaving the field: no decimals typed -> ".00" is added; otherwise padded to two places. */
+LB.amountFixed = function (raw) {
+    return LB.amountValue(raw).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+$(document).on('input', AMOUNT_FIELDS, function () {
     var $field = $(this);
-    if ($field.prop('readonly') || $field.val() === '') { return; }
-    $field.val(Number(LB.amountValue($field.val())).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    if ($field.prop('readonly')) { return; }
+    var typed = LB.amountTyping($field.val());
+    if (typed !== $field.val()) { $field.val(typed); }
 });
 
-$(document).on('focus', '#amount, input[name="amount"]', function () {
+$(document).on('focusout', AMOUNT_FIELDS, function () {
     var $field = $(this);
-    if ($field.val() === '') { return; }
-    $field.val(String(LB.amountValue($field.val())));
+    if ($field.prop('readonly') || $field.val() === '') { return; }
+    $field.val(LB.amountFixed($field.val()));
+});
+
+$(document).on('focus', AMOUNT_FIELDS, function () {
+    var $field = $(this);
+    if ($field.prop('readonly') || $field.val() === '') { return; }
+    $field.val(String($field.val()).replace(/,/g, ''));
 });
 
 LB.money = function (value) {

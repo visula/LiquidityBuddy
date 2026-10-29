@@ -25,7 +25,12 @@ $routes->get('/login', 'Home::index');
 $routes->post('/user/login-validation', 'Home::loginValidation');
 $routes->get('/user/signup-page', 'Home::signup');
 $routes->post('/user/signup-validation', 'Home::signupValidation');
-$routes->get('/user/password-reset', 'Home::passwordRest');
+// Forgot / reset password (public)
+$routes->get('/user/forgot-password', 'PasswordResetController::forgotForm');
+$routes->post('/user/forgot-password', 'PasswordResetController::forgotSubmit');
+$routes->get('/user/reset/(:segment)', 'PasswordResetController::resetForm/$1');
+$routes->post('/user/reset', 'PasswordResetController::resetSubmit');
+$routes->get('/user/password-reset', 'PasswordResetController::forgotForm');
 // $routes->get('', 'Home::index');
 
 // Google login
@@ -45,6 +50,7 @@ $routes->get('/account/group', 'AccountController::accountGroupPage');
 $routes->post('/js-request/account/create', 'AccountController::createAccount');
 $routes->post('/js-request/account/update', 'AccountController::updateAccount');
 $routes->post('/js-request/account/details', 'AccountController::accountDetails');
+$routes->post('/js-request/account/settle-main', 'AccountController::settleMainAccount');
 $routes->post('/js-request/account/delete', 'AccountController::deleteAccount');
 
 // JS requests: Budget

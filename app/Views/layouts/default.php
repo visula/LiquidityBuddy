@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
     <link rel="stylesheet" href="<?= base_url('assets/css/default.css') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/theme.css') ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/mobile.css') ?>">
     <?= $this->renderSection("styles") ?>
     <script>
         var base_url = "<?= base_url() ?>";

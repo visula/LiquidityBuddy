@@ -130,12 +130,12 @@
                                                         <option value="<?= esc($product['sessionid'], 'attr') ?>"
                                                                 data-type="<?= esc($product['producttype'], 'attr') ?>"
                                                                 data-rate="<?= esc($pct($product['interestrate']), 'attr') ?>"
-                                                                data-fees="<?= esc(\App\Libraries\BankRateSync::feeSummary($productFees[$product['sessionid']] ?? []), 'attr') ?>"><?= esc($bankName) ?> · <?= esc($product['productname']) ?> · <?= $pct($product['interestrate']) ?>%</option>
+                                                                data-fees="<?= esc(\App\Libraries\BankRateSync::feeSummary($productFees[$product['sessionid']] ?? []), 'attr') ?>"><?<?= esc($product['productname']) ?> · <?= $pct($product['interestrate']) ?>%</option>
                                                     <?php } ?>
                                                 </optgroup>
                                             <?php } ?>
                                         </select>
-                                        <label for="bank-product">Bank product (for rates and charges, optional)</label>
+                                        <label for="bank-product">Bank product (optional)</label>
                                     </div>
                                     <small class="text-muted" id="bank-product-hint">Pick the bank product to get its interest rate and its withdrawal and transfer charges from <a href="<?= base_url('bank-rates') ?>">Bank Rates</a>.</small>
                                 </div>
@@ -144,7 +144,7 @@
                                         <select class="form-select" id="parent-account">
                                             <option value="">No, this is a main account</option>
                                             <?php foreach (($mainAccounts ?? []) as $main) { ?>
-                                                <option value="<?= esc($main['sessionid'], 'attr') ?>"><?= esc($main['name']) ?><?= $main['bankname'] ? ' · ' . esc($main['bankname']) : '' ?></option>
+                                                <option value="<?= esc($main['sessionid'], 'attr') ?>"><?= esc($main['name']) ?><?= $main['bankname'] ? ' · ' . esc($main['bankname']) : '' ?><?= $main['groupname'] ? ' (' . esc($main['groupname']) . ')' : '' ?></option>
                                             <?php } ?>
                                         </select>
                                         <label for="parent-account">Sub-account of a main account?</label>
@@ -169,29 +169,10 @@
                                         <input class="form-check-input" type="radio" name="card-mode" id="card-none" value="none" checked>
                                         <label class="form-check-label" for="card-none">No card for this account</label>
                                     </div>
-                                    <?php if (! empty($cards)) { ?>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="card-mode" id="card-existing" value="existing">
-                                        <label class="form-check-label" for="card-existing">Use a card already in the system</label>
-                                    </div>
-                                    <?php } ?>
                                     <div class="form-check">
                                         <input class="form-check-input" type="radio" name="card-mode" id="card-new" value="new">
                                         <label class="form-check-label" for="card-new">Add a new card</label>
                                     </div>
-                                </div>
-
-                                <div class="col-12 mb-3 d-none" id="card-existing-col">
-                                    <div class="form-floating">
-                                        <select class="form-select" id="linked-card-list">
-                                            <option value="">Choose a card</option>
-                                            <?php foreach ($cards as $card) { ?>
-                                                <option value="<?= esc($card['PaymentMethodSessionID'], 'attr') ?>"><?= esc($card['PaymentMethodLabel']) ?> (<?= esc($card['PaymentMethodTypeLabel']) ?>, <?= esc($card['AccountName']) ?>)</option>
-                                            <?php } ?>
-                                        </select>
-                                        <label for="linked-card-list">Card</label>
-                                    </div>
-                                    <small class="text-muted">This account pays from its own balance, as a debit. The card's limit and debt stay with the account that owns the card.</small>
                                 </div>
 
                                 <div class="col-12 d-none" id="card-new-col">

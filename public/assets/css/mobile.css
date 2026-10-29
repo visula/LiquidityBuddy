@@ -1,0 +1,95 @@
+/*
+ * Phone layer. Loaded after theme.css and plan.css on every page.
+ * Desktop is unchanged: every rule here sits inside a max-width media query.
+ */
+
+/* Phones: forms and cards stack to one column (two half-width fields side by side are too narrow) */
+@media (max-width: 575.98px) {
+    .container,
+    .container-fluid {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .row > [class*="col-"] {
+        width: 100%;
+        max-width: 100%;
+        flex: 0 0 100%;
+    }
+
+    /* Keep a grid's own gutters, but not its side halves */
+    .row.g-3 > [class*="col-"],
+    .row.g-2 > [class*="col-"] {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+    }
+
+    /* Touch targets at least 44px tall */
+    .btn,
+    .form-select,
+    .form-control,
+    .nav-link,
+    .dropdown-item {
+        min-height: 44px;
+    }
+
+    .btn-sm {
+        min-height: 36px;
+    }
+
+    /* Text inputs at 16px stop iOS zooming in when a field is focused */
+    input.form-control,
+    select.form-select,
+    textarea.form-control {
+        font-size: 16px;
+    }
+
+    /* Full-width action buttons inside forms, easy to tap with a thumb */
+    .lb-card .btn-primary:not(.btn-sm),
+    .lb-card .btn-secondary:not(.btn-sm) {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Modals fill the phone width instead of floating in a narrow strip */
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+
+    /* Wide tables (plan grid, transaction lists) scroll sideways inside their own box */
+    .table-responsive,
+    .plan-grid-wrap {
+        -webkit-overflow-scrolling: touch;
+        overflow-x: auto;
+    }
+
+    /* Nothing should widen the whole page */
+    img,
+    video,
+    iframe {
+        max-width: 100%;
+        height: auto;
+    }
+
+    /* Stacked header actions wrap rather than overflow */
+    .plan-toolbar,
+    .d-flex.justify-content-between {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    /* Auth pages: use the screen, keep a comfortable gutter */
+    .lb-auth {
+        padding: 12px;
+    }
+}
+
+/* Tablets: two columns for forms, the rest stacks as Bootstrap decides */
+@media (min-width: 576px) and (max-width: 767.98px) {
+    .btn,
+    .form-select,
+    .form-control {
+        min-height: 40px;
+    }
+}
